@@ -1,0 +1,186 @@
+Technest Website Plan
+Tech Stack
+
+Frontend: React.js with TypeScript, Tailwind CSS for styling
+State Management: Context API or Redux for smaller scale
+Form Handling: React Hook Form with Yup for validation
+File Handling: File-saver.js for ZIP downloads
+UI Components: Headless UI or Shadcn/UI for accessible components
+Responsive Design: Tailwind's responsive utilities
+Image Processing: Sharp or browser-native APIs
+Color Picker: React Color
+Preview Engine: Iframe-based live preview
+
+Pages Structure
+
+Landing Page (/)
+
+Hero section explaining Technest
+Features overview
+Template showcase with pricing
+Testimonials (future addition)
+Call-to-action
+
+
+Authentication Pages
+
+Sign Up (/signup)
+Login (/login)
+Password Reset (/reset-password)
+
+
+User Dashboard (/dashboard)
+
+Overview of saved portfolios
+Quick actions (create new, edit existing)
+Account settings
+
+
+Portfolio Creator (/create)
+
+Multi-step form process
+Live preview panel
+Template selection
+
+
+Template Browser (/templates)
+
+Grid view of all templates
+Filter by free/premium
+Sort by popularity/newest
+
+
+Admin Dashboard (/admin)
+
+Template management
+User management
+Analytics overview
+
+
+Portfolio Preview (/preview/:portfolioId)
+
+Full-screen preview of current portfolio
+Device view switcher (mobile/tablet/desktop)
+
+
+Account Settings (/settings)
+
+Profile information
+Subscription management (future)
+Password change
+
+
+
+Modals
+
+Template Selection Modal
+
+Grid of templates with thumbnails
+Pricing information
+"Select" button
+Quick preview option
+
+
+Color Scheme Modal
+
+Color picker for primary, secondary, accent colors
+Preset color palettes
+Custom color input
+Live preview of changes
+
+
+Export/Download Modal
+
+Final check before download
+File naming option
+Download progress indicator
+Success confirmation
+
+
+Image Upload Modal
+
+Drag and drop zone
+Crop/resize tools
+Preview of uploaded image
+
+
+Form Validation Modal
+
+Shows incomplete or invalid fields
+Quick navigation to problematic sections
+
+
+Preview Device Selection Modal
+
+Toggle between mobile, tablet, desktop views
+Orientation options (portrait/landscape)
+
+
+SEO Information Modal
+
+Form for meta title, description
+Social media preview
+SEO score/suggestion indicator
+
+
+Add Template Modal (Admin)
+
+Template upload form
+Pricing setting
+Thumbnail upload
+Template name and description
+
+
+
+Portfolio Creator Form Sections
+
+Personal Information
+
+Name, headline, about me
+Profile photo upload
+Contact details
+Social media links
+
+
+Skills & Technologies
+
+Add/remove skills
+Proficiency level sliders
+Categorization options
+
+
+Projects
+
+Project title, description
+Technologies used
+Project images
+Links to live site or code
+
+
+Education & Experience
+
+School/company
+Dates
+Degree/position
+Description
+
+
+Additional Sections
+
+Testimonials/references
+Achievements/certifications
+Custom sections
+
+
+Design Customization
+
+Template selection
+Color scheme
+Typography options
+
+
+SEO & Metadata
+
+Meta title and description
+Keywords
+Open Graph preview
