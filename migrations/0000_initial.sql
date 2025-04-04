@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user'
+);
+
+CREATE TABLE IF NOT EXISTS templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  thumbnail_url TEXT NOT NULL,
+  is_premium INTEGER NOT NULL DEFAULT 0,
+  price INTEGER DEFAULT 0,
+  category TEXT NOT NULL,
+  popularity INTEGER NOT NULL DEFAULT 0,
+  html_content TEXT,
+  css_content TEXT,
+  js_content TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS portfolios (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  name TEXT NOT NULL,
+  template_id TEXT NOT NULL,
+  personal_info BLOB NOT NULL,
+  skills BLOB NOT NULL,
+  projects BLOB NOT NULL,
+  education BLOB NOT NULL,
+  color_scheme BLOB NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  is_published INTEGER NOT NULL DEFAULT 0
+);

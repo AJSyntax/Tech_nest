@@ -1,35 +1,36 @@
-import { pgTable, text, serial, integer, json, boolean, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, blob, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"), // Can be "user" or "admin"
 });
 
-export const portfolios = pgTable("portfolios", {
-  id: serial("id").primaryKey(),
+export const portfolios = sqliteTable("portfolios", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull().references(() => users.id),
   name: text("name").notNull(),
   templateId: text("template_id").notNull(),
-  personalInfo: json("personal_info").notNull(),
-  skills: json("skills").notNull(),
-  projects: json("projects").notNull(),
-  education: json("education").notNull(),
-  colorScheme: json("color_scheme").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  isPublished: boolean("is_published").notNull().default(false),
+  personalInfo: blob("personal_info", { mode: "json" }).notNull(),
+  skills: blob("skills", { mode: "json" }).notNull(),
+  projects: blob("projects", { mode: "json" }).notNull(),
+  education: blob("education", { mode: "json" }).notNull(),
+  colorScheme: blob("color_scheme", { mode: "json" }).notNull(),
+  createdAt: integer("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
 });
 
-export const templates = pgTable("templates", {
-  id: serial("id").primaryKey(),
+export const templates = sqliteTable("templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description").notNull(),
   thumbnailUrl: text("thumbnail_url").notNull(),
-  isPremium: boolean("is_premium").notNull().default(false),
+  isPremium: integer("is_premium", { mode: "boolean" }).notNull().default(false),
   price: integer("price").default(0), // Price in cents, 0 for free templates
   category: text("category").notNull(),
   popularity: integer("popularity").notNull().default(0),
@@ -37,7 +38,7 @@ export const templates = pgTable("templates", {
   cssContent: text("css_content"), // CSS content for the template
   jsContent: text("js_content"), // JavaScript content for the template
   createdBy: integer("created_by").references(() => users.id), // Admin who created the template
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: integer("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const personalInfoSchema = z.object({
