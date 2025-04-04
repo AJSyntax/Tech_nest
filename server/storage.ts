@@ -4,6 +4,11 @@ import {
   templates, type Template, type InsertTemplate
 } from "@shared/schema";
 
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
+
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -25,6 +30,9 @@ export interface IStorage {
   getPremiumTemplates(): Promise<Template[]>;
   createTemplate(template: InsertTemplate): Promise<Template>;
   incrementTemplatePopularity(id: number): Promise<Template | undefined>;
+  
+  // Session store
+  sessionStore: any; // Using any for SessionStore type to avoid TypeScript errors
 }
 
 export class MemStorage implements IStorage {
@@ -35,6 +43,7 @@ export class MemStorage implements IStorage {
   private userId: number;
   private portfolioId: number;
   private templateId: number;
+  sessionStore: any; // Using any for SessionStore type to avoid TypeScript errors
 
   constructor() {
     this.users = new Map();
@@ -44,6 +53,10 @@ export class MemStorage implements IStorage {
     this.userId = 1;
     this.portfolioId = 1;
     this.templateId = 1;
+    
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
     
     // Initialize with some default templates
     this.initializeTemplates();
@@ -115,7 +128,9 @@ export class MemStorage implements IStorage {
       ...insertPortfolio, 
       id, 
       createdAt: now, 
-      updatedAt: now 
+      updatedAt: now,
+      // Ensure required properties are set with default values if not provided
+      isPublished: insertPortfolio.isPublished ?? false
     };
     this.portfolios.set(id, portfolio);
     return portfolio;
@@ -170,7 +185,13 @@ export class MemStorage implements IStorage {
 
   async createTemplate(insertTemplate: InsertTemplate): Promise<Template> {
     const id = this.templateId++;
-    const template: Template = { ...insertTemplate, id, popularity: 0 };
+    const template: Template = { 
+      ...insertTemplate, 
+      id, 
+      popularity: 0,
+      // Ensure required properties are set with default values if not provided
+      isPremium: insertTemplate.isPremium ?? false
+    };
     this.templates.set(id, template);
     return template;
   }

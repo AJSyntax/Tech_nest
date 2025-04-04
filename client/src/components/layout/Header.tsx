@@ -1,14 +1,27 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Code } from "lucide-react";
+import { Code, LogOut, Loader2 } from "lucide-react";
 import MobileNav from "./MobileNav";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [location] = useLocation();
+  const { user, isLoading, logoutMutation } = useAuth();
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(prev => !prev);
+  };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
   return (
@@ -33,9 +46,41 @@ const Header = () => {
           </nav>
           
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/create" className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium transition">
-              Create Portfolio
-            </Link>
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-primary-600" />
+            ) : user ? (
+              <>
+                <Link href="/create" className="bg-primary-600 text-white hover:bg-primary-700 px-4 py-2 rounded-md text-sm font-medium transition">
+                  Create Portfolio
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative rounded-full">
+                      <span className="font-medium">{user.username}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
+                      {logoutMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <span>Logging out...</span>
+                        </>
+                      ) : (
+                        <>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Log out</span>
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Link href="/auth" className="text-primary-600 hover:text-primary-800 font-medium">
+                Sign In
+              </Link>
+            )}
           </div>
           
           {/* Mobile menu button */}
@@ -54,7 +99,7 @@ const Header = () => {
       </div>
       
       {/* Mobile Menu */}
-      <MobileNav isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+      <MobileNav isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} user={user} onLogout={handleLogout} />
     </header>
   );
 };

@@ -9,6 +9,9 @@ import Home from "./pages/Home";
 import Templates from "./pages/Templates";
 import Create from "./pages/Create";
 import Preview from "./pages/Preview";
+import AuthPage from "./pages/auth-page";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 function Router() {
   return (
@@ -17,8 +20,9 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/templates" component={Templates} />
-        <Route path="/create" component={Create} />
-        <Route path="/preview/:id" component={Preview} />
+        <Route path="/auth" component={AuthPage} />
+        <ProtectedRoute path="/create" component={Create} />
+        <ProtectedRoute path="/preview/:id" component={Preview} />
         <Route component={NotFound} />
       </Switch>
       <Footer />
@@ -29,8 +33,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

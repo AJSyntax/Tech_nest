@@ -1,13 +1,39 @@
-import express, { type Express } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ZodError } from "zod";
 import { portfolioSchema, insertUserSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { setupAuth } from "./auth";
+
+// Middleware to check if user is authenticated
+const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  
+  res.status(401).json({ message: "Unauthorized" });
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+  
   const apiRouter = express.Router();
 
+  // User routes
+  apiRouter.get("/user/portfolios", isAuthenticated, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const portfolios = await storage.getPortfoliosByUserId(req.user.id);
+      res.json(portfolios);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user portfolios" });
+    }
+  });
+  
   // Templates routes
   apiRouter.get("/templates", async (req, res) => {
     try {
@@ -66,25 +92,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Portfolio routes
-  apiRouter.post("/portfolios", async (req, res) => {
+  apiRouter.post("/portfolios", isAuthenticated, async (req, res) => {
     try {
-      // Note: In a real app, this would get the userId from the authenticated user
-      // For this demo, we'll create a user if one doesn't exist
-      let user = await storage.getUserByUsername("demo_user");
-      if (!user) {
-        user = await storage.createUser({
-          username: "demo_user",
-          password: "demo_password"
-        });
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
       }
       
       // Validate the portfolio data
       const validatedData = portfolioSchema.parse(req.body);
       
-      // Create the portfolio
+      // Create the portfolio with authenticated user's ID
       const portfolio = await storage.createPortfolio({
         ...validatedData,
-        userId: user.id
+        userId: req.user.id
       });
       
       // Increment the template popularity
@@ -112,14 +132,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Portfolio not found" });
       }
       
+      // If portfolio is not published, only the owner can view it
+      if (!portfolio.isPublished && (!req.isAuthenticated() || (req.user && req.user.id !== portfolio.userId))) {
+        return res.status(403).json({ message: "You don't have permission to view this portfolio" });
+      }
+      
       res.json(portfolio);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch portfolio" });
     }
   });
 
-  apiRouter.put("/portfolios/:id", async (req, res) => {
+  apiRouter.put("/portfolios/:id", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid portfolio ID" });
@@ -129,6 +158,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingPortfolio = await storage.getPortfolio(id);
       if (!existingPortfolio) {
         return res.status(404).json({ message: "Portfolio not found" });
+      }
+      
+      // Check if user is the owner of this portfolio
+      if (existingPortfolio.userId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to update this portfolio" });
       }
       
       // Validate the portfolio data
@@ -147,18 +181,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  apiRouter.delete("/portfolios/:id", async (req, res) => {
+  apiRouter.delete("/portfolios/:id", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid portfolio ID" });
       }
       
-      const success = await storage.deletePortfolio(id);
-      if (!success) {
+      // Check if portfolio exists
+      const existingPortfolio = await storage.getPortfolio(id);
+      if (!existingPortfolio) {
         return res.status(404).json({ message: "Portfolio not found" });
       }
       
+      // Check if user is the owner of this portfolio
+      if (existingPortfolio.userId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to delete this portfolio" });
+      }
+      
+      const success = await storage.deletePortfolio(id);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete portfolio" });
