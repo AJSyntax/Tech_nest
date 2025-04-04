@@ -57,9 +57,21 @@ const Header = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative rounded-full">
                       <span className="font-medium">{user.username}</span>
+                      {user.role === "admin" && (
+                        <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                          Admin
+                        </span>
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {user.role === "admin" && (
+                      <Link href="/admin">
+                        <DropdownMenuItem>
+                          Admin Dashboard
+                        </DropdownMenuItem>
+                      </Link>
+                    )}
                     <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
                       {logoutMutation.isPending ? (
                         <>

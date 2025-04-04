@@ -51,6 +51,11 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose, user, onLogout }
             <>
               <div className="px-3 py-2 text-base font-medium text-slate-600">
                 Signed in as <span className="font-semibold">{user.username}</span>
+                {user.role === "admin" && (
+                  <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                    Admin
+                  </span>
+                )}
               </div>
               <Link 
                 href="/create"
@@ -59,6 +64,15 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose, user, onLogout }
               >
                 Create Portfolio
               </Link>
+              {user.role === "admin" && (
+                <Link 
+                  href="/admin"
+                  onClick={onClose}
+                  className="block w-full px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
               <button
                 onClick={handleLogout}
                 className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"

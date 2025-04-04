@@ -69,21 +69,33 @@ export class MemStorage implements IStorage {
         description: "Clean, minimalist design with emphasis on content. Perfect for developers who prefer simplicity.",
         thumbnailUrl: "https://images.unsplash.com/photo-1517292987719-0369a794ec0f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1074&q=80",
         isPremium: false,
-        category: "Minimal"
+        price: 0,
+        category: "Minimal",
+        htmlContent: `<!DOCTYPE html><html><head><title>{{personalInfo.firstName}} {{personalInfo.lastName}} - Portfolio</title></head><body><h1>{{personalInfo.firstName}} {{personalInfo.lastName}}</h1><p>{{personalInfo.headline}}</p></body></html>`,
+        cssContent: `body { font-family: Arial, sans-serif; }`,
+        jsContent: null
       },
       {
         name: "Tech Stack",
         description: "Modern design highlighting your technical skills with a special focus on your development stack.",
         thumbnailUrl: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1169&q=80",
         isPremium: true,
-        category: "Modern"
+        price: 2999, // $29.99
+        category: "Modern",
+        htmlContent: `<!DOCTYPE html><html><head><title>{{personalInfo.firstName}} {{personalInfo.lastName}} - Tech Portfolio</title></head><body><header><h1>{{personalInfo.firstName}} {{personalInfo.lastName}}</h1><p>{{personalInfo.headline}}</p></header><section class="skills">{{#each skills}}<div class="skill">{{name}}</div>{{/each}}</section></body></html>`,
+        cssContent: `body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }`,
+        jsContent: `document.addEventListener('DOMContentLoaded', function() { console.log('Portfolio loaded'); });`
       },
       {
         name: "Project Showcase",
         description: "Visual portfolio with emphasis on your projects, perfect for showing off your work samples.",
         thumbnailUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80",
         isPremium: true,
-        category: "Creative"
+        price: 4999, // $49.99
+        category: "Creative",
+        htmlContent: `<!DOCTYPE html><html><head><title>{{personalInfo.firstName}} {{personalInfo.lastName}} - Projects</title></head><body><header><h1>{{personalInfo.firstName}} {{personalInfo.lastName}}</h1></header><div class="projects">{{#each projects}}<div class="project"><h3>{{title}}</h3><p>{{description}}</p></div>{{/each}}</div></body></html>`,
+        cssContent: `body { font-family: 'Roboto', sans-serif; background-color: #f5f5f5; }`,
+        jsContent: `document.addEventListener('DOMContentLoaded', function() { console.log('Projects loaded'); });`
       }
     ];
     
@@ -105,7 +117,12 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userId++;
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      // Ensure the role is set with a default value if not provided
+      role: insertUser.role || "user"
+    };
     this.users.set(id, user);
     return user;
   }
@@ -185,12 +202,19 @@ export class MemStorage implements IStorage {
 
   async createTemplate(insertTemplate: InsertTemplate): Promise<Template> {
     const id = this.templateId++;
+    const now = new Date();
     const template: Template = { 
       ...insertTemplate, 
       id, 
       popularity: 0,
       // Ensure required properties are set with default values if not provided
-      isPremium: insertTemplate.isPremium ?? false
+      isPremium: insertTemplate.isPremium ?? false,
+      price: insertTemplate.price ?? 0,
+      htmlContent: insertTemplate.htmlContent ?? null,
+      cssContent: insertTemplate.cssContent ?? null,
+      jsContent: insertTemplate.jsContent ?? null,
+      createdBy: insertTemplate.createdBy ?? null,
+      createdAt: now
     };
     this.templates.set(id, template);
     return template;

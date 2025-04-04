@@ -89,6 +89,9 @@ export function setupAuth(app: Express) {
       const user = await storage.createUser({
         ...req.body,
         password: hashedPassword,
+        // For security reasons, force role to be 'user' in the public registration API
+        // Admins are created programmatically or by existing admins
+        role: "user",
       });
 
       // Auto-login the user after registration

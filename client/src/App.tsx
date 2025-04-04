@@ -10,6 +10,7 @@ import Templates from "./pages/Templates";
 import Create from "./pages/Create";
 import Preview from "./pages/Preview";
 import AuthPage from "./pages/auth-page";
+import AdminDashboard from "./pages/admin/Dashboard";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/auth" component={AuthPage} />
         <ProtectedRoute path="/create" component={Create} />
         <ProtectedRoute path="/preview/:id" component={Preview} />
+        <ProtectedRoute path="/admin" component={AdminDashboard} />
         <Route component={NotFound} />
       </Switch>
       <Footer />

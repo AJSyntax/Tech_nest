@@ -6,6 +6,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").notNull().default("user"), // Can be "user" or "admin"
 });
 
 export const portfolios = pgTable("portfolios", {
@@ -29,8 +30,14 @@ export const templates = pgTable("templates", {
   description: text("description").notNull(),
   thumbnailUrl: text("thumbnail_url").notNull(),
   isPremium: boolean("is_premium").notNull().default(false),
+  price: integer("price").default(0), // Price in cents, 0 for free templates
   category: text("category").notNull(),
   popularity: integer("popularity").notNull().default(0),
+  htmlContent: text("html_content"), // HTML template content
+  cssContent: text("css_content"), // CSS content for the template
+  jsContent: text("js_content"), // JavaScript content for the template
+  createdBy: integer("created_by").references(() => users.id), // Admin who created the template
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const personalInfoSchema = z.object({
@@ -94,6 +101,7 @@ export const portfolioSchema = z.object({
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  role: true,
 });
 
 export const insertPortfolioSchema = createInsertSchema(portfolios).omit({
@@ -104,7 +112,8 @@ export const insertPortfolioSchema = createInsertSchema(portfolios).omit({
 
 export const insertTemplateSchema = createInsertSchema(templates).omit({
   id: true,
-  popularity: true
+  popularity: true,
+  createdAt: true
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
