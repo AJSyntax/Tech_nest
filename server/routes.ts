@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { ZodError } from "zod";
 import { portfolioSchema, insertUserSchema, insertTemplateSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
@@ -296,13 +296,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Using hashPassword imported at the top of the file
+
   // Create admin and regular user accounts if they don't exist
   try {
     const adminUser = await storage.getUserByUsername("admin");
     if (!adminUser) {
+      const hashedPassword = await hashPassword("adminpassword");
       await storage.createUser({
         username: "admin",
-        password: "$2b$10$dRcNEcyPn9ecH5w.oJwTDOmfvlkC3H5PF3hWvG0C5fmM3SwTLM.Q.", // "adminpassword"
+        password: hashedPassword,
         role: "admin"
       });
       console.log("Admin user created");
@@ -310,9 +313,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const demoUser = await storage.getUserByUsername("user");
     if (!demoUser) {
+      const hashedPassword = await hashPassword("userpassword");
       await storage.createUser({
         username: "user",
-        password: "$2b$10$EgYdS5k.B5C0ZGZnHlXYe.ogwkMVv5mxYsEdRLJZdoB3Z54wnOzJm", // "userpassword"
+        password: hashedPassword,
         role: "user"
       });
       console.log("Demo user created");
