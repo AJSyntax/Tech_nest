@@ -24,7 +24,9 @@ const Create = () => {
     setCurrentStep,
     openTemplateModal, 
     closeTemplateModal, 
-    updatePortfolio
+    updatePortfolio,
+    savePortfolio,
+    closeExportModal
   } = usePortfolio();
 
   const [, setLocation] = useLocation();
@@ -82,7 +84,7 @@ const Create = () => {
   const currentStepData = steps[currentStep];
 
   const handleFinish = async () => {
-    const portfolioId = await usePortfolio().savePortfolio();
+    const portfolioId = await savePortfolio();
     if (portfolioId) {
       setLocation(`/preview/${portfolioId}`);
     }
@@ -131,7 +133,7 @@ const Create = () => {
 
       {/* Export Modal */}
       {isExportModalOpen && (
-        <ExportModal onClose={usePortfolio().closeExportModal} />
+        <ExportModal onClose={closeExportModal} />
       )}
     </div>
   );
