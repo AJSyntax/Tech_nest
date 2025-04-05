@@ -15,17 +15,22 @@ import { useQuery } from "@tanstack/react-query";
 import { Template } from "@shared/schema";
 import { useSearch } from "wouter";
 
-const Create = () => {
-  const { 
-    portfolio, 
-    currentStep, 
-    isTemplateModalOpen, 
+// Define props for the Create component
+interface CreateProps {
+  portfolioId?: string; // Optional ID for edit mode
+}
+
+const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolioId prop
+  const {
+    portfolio,
+    currentStep,
+    isTemplateModalOpen,
     isExportModalOpen,
     setCurrentStep,
-    openTemplateModal, 
-    closeTemplateModal, 
+    openTemplateModal,
+    closeTemplateModal,
     updatePortfolio,
-    savePortfolio,
+    savePortfolio, // We'll modify this function in the context later
     closeExportModal
   } = usePortfolio();
 
@@ -38,15 +43,15 @@ const Create = () => {
     queryKey: ['/api/templates'],
   });
 
-  // If a template ID is in the URL, update the portfolio
+  // If a template ID is in the URL, update the portfolio (only if not editing)
   useEffect(() => {
-    if (templateIdParam && templates) {
+    if (!portfolioId && templateIdParam && templates) { // Check if not editing
       const selectedTemplate = templates.find(t => t.id.toString() === templateIdParam);
       if (selectedTemplate) {
         updatePortfolio({ templateId: selectedTemplate.id.toString() });
       }
     }
-  }, [templateIdParam, templates, updatePortfolio]);
+  }, [portfolioId, templateIdParam, templates, updatePortfolio]);
 
   const steps: FormStep[] = [
     {
@@ -84,9 +89,12 @@ const Create = () => {
   const currentStepData = steps[currentStep];
 
   const handleFinish = async () => {
-    const portfolioId = await savePortfolio();
-    if (portfolioId) {
-      setLocation(`/preview/${portfolioId}`);
+    // Pass the portfolioId (if it exists) to savePortfolio
+    // savePortfolio will handle whether to POST (create) or PUT (update)
+    const savedPortfolioId = await savePortfolio(portfolioId); // Pass ID here
+    if (savedPortfolioId) {
+      // Redirect to preview page after save/update
+      setLocation(`/preview/${savedPortfolioId}`);
     }
   };
 
@@ -94,8 +102,13 @@ const Create = () => {
     <div className="bg-slate-50 min-h-screen">
       <div className="container-custom py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Create Your Portfolio</h1>
-          <p className="text-slate-600">Fill in your information to generate your professional portfolio</p>
+          {/* Change title based on mode */}
+          <h1 className="text-2xl font-bold text-slate-900">
+            {portfolioId ? "Edit Your Portfolio" : "Create Your Portfolio"}
+          </h1>
+          <p className="text-slate-600">
+            {portfolioId ? "Update your information below." : "Fill in your information to generate your professional portfolio"}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -103,7 +116,7 @@ const Create = () => {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
               {/* Progress Steps */}
-              <FormNavigation 
+              <FormNavigation
                 steps={steps}
                 currentStep={currentStep}
                 onSelectStep={setCurrentStep}
@@ -118,7 +131,7 @@ const Create = () => {
 
           {/* Preview Section (1/3 width on large screens) */}
           <div className="hidden lg:block">
-            <LivePreview 
+            <LivePreview
               portfolio={portfolio}
               onSelectTemplate={openTemplateModal}
             />

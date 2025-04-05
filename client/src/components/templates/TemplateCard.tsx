@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 
 interface TemplateCardProps {
   template: Template;
+  onPreview: (template: Template) => void; // Add onPreview prop
 }
 
-const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
+const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPreview }) => {
   const [isHovering, setIsHovering] = useState(false);
 
   return (
@@ -29,6 +30,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
             variant="secondary" 
             className="opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
             size="sm"
+            onClick={() => onPreview(template)} // Add onClick handler
           >
             <Eye className="mr-2 h-4 w-4" />
             Preview

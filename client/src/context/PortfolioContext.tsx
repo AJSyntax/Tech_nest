@@ -22,7 +22,7 @@ interface PortfolioContextType {
   openExportModal: () => void;
   closeExportModal: () => void;
   resetPortfolio: () => void;
-  savePortfolio: () => Promise<number | undefined>;
+  savePortfolio: (id?: string) => Promise<number | undefined>; // Accept optional ID
   loadPortfolio: (id: number) => Promise<void>;
 }
 
@@ -71,36 +71,64 @@ const defaultDevices: DevicePreviewType[] = [
   }
 ];
 
+import { deepmerge } from 'deepmerge-ts'; // Import deepmerge
+
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
-export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [portfolio, setPortfolio] = useState<PortfolioFormData>(defaultPortfolio);
+// Define props for PortfolioProvider, including optional initialData
+interface PortfolioProviderProps {
+  children: React.ReactNode;
+  initialData?: PortfolioFormData;
+}
+
+export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, initialData }) => {
+  // Initialize state: Use initialData if provided, otherwise use defaultPortfolio
+  // Deep merge initialData with defaultPortfolio to ensure all fields are present
+  const [portfolio, setPortfolio] = useState<PortfolioFormData>(
+    initialData ? deepmerge(defaultPortfolio, initialData) : defaultPortfolio
+  );
   const [currentStep, setCurrentStep] = useState(0);
   const [device, setDevice] = useState<DevicePreviewType>(defaultDevices[2]); // Default to desktop
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const { toast } = useToast();
 
-  // Load from localStorage on initial mount
+  // Save to localStorage whenever portfolio changes (keep this)
   useEffect(() => {
-    const savedPortfolio = localStorage.getItem("technest_portfolio_draft");
-    if (savedPortfolio) {
-      try {
-        setPortfolio(JSON.parse(savedPortfolio));
-      } catch (e) {
-        console.error("Failed to parse saved portfolio:", e);
-      }
+    // Only save if not initializing with initialData to avoid overwriting fetched data immediately
+    if (!initialData) {
+       localStorage.setItem("technest_portfolio_draft", JSON.stringify(portfolio));
     }
-  }, []);
+  }, [portfolio, initialData]);
 
-  // Save to localStorage whenever portfolio changes
+  // Effect to update state if initialData changes (e.g., navigating between edit pages)
   useEffect(() => {
-    localStorage.setItem("technest_portfolio_draft", JSON.stringify(portfolio));
-  }, [portfolio]);
+    if (initialData) {
+      setPortfolio(deepmerge(defaultPortfolio, initialData));
+      // Optionally reset step if needed when loading new data
+      // setCurrentStep(0);
+    } else {
+      // Reset to default if navigating from edit to create
+      // Consider if loading from localStorage is desired here for create drafts
+       const savedPortfolio = localStorage.getItem("technest_portfolio_draft");
+       if (savedPortfolio) {
+         try {
+           setPortfolio(JSON.parse(savedPortfolio));
+         } catch (e) {
+           console.error("Failed to parse saved portfolio:", e);
+           setPortfolio(defaultPortfolio); // Fallback to default if parse fails
+         }
+       } else {
+         setPortfolio(defaultPortfolio);
+       }
+     }
+   }, [initialData]);
 
+  // This is the correct updatePortfolio function
   const updatePortfolio = (data: Partial<PortfolioFormData>) => {
     setPortfolio(prev => ({
       ...prev,
+      // Note: The localStorage update is handled by the useEffect hook above
       ...data
     }));
   };
@@ -138,7 +166,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const savePortfolio = async (): Promise<number | undefined> => {
+  // Modify savePortfolio to accept optional ID and handle PUT requests for updates
+  const savePortfolio = async (id?: string): Promise<number | undefined> => {
     if (!validatePortfolio()) {
       toast({
         title: "Validation Error",
@@ -148,11 +177,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
 
+    const isUpdating = !!id;
+    const url = isUpdating ? `/api/portfolios/${id}` : "/api/portfolios";
+    const method = isUpdating ? "PUT" : "POST";
+
     try {
-      const response = await fetch("/api/portfolios", {
-        method: "POST",
+      const response = await fetch(url, {
+        method: method,
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(portfolio)
       });
@@ -162,18 +195,21 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       const savedPortfolio = await response.json();
-      
+
       toast({
         title: "Success!",
-        description: "Your portfolio has been saved",
+        description: `Your portfolio has been ${isUpdating ? 'updated' : 'saved'}`,
       });
-      
-      return savedPortfolio.id;
+
+      // Clear local storage draft after successful save/update
+      localStorage.removeItem("technest_portfolio_draft");
+
+      return savedPortfolio.id; // Assuming API returns the portfolio with ID
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to save portfolio",
-        variant: "destructive"
+        description: `Failed to ${isUpdating ? 'update' : 'save'} portfolio`,
+        variant: "destructive",
       });
     }
   };

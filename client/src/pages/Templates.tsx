@@ -6,6 +6,7 @@ import TemplateCard from '@/components/templates/TemplateCard';
 import TemplateFilter from '@/components/templates/TemplateFilter';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
+import TemplatePreviewModal from '@/components/modals/TemplatePreviewModal'; // Import the modal
 
 const TEMPLATES_PER_PAGE = 6;
 
@@ -17,6 +18,8 @@ const Templates = () => {
   });
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [selectedTemplateForPreview, setSelectedTemplateForPreview] = useState<Template | null>(null);
 
   // Reset page when filters change
   useEffect(() => {
@@ -29,6 +32,16 @@ const Templates = () => {
 
   const handleFilterChange = (newFilters: Partial<TemplateFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
+  };
+
+  const handleOpenPreviewModal = (template: Template) => {
+    setSelectedTemplateForPreview(template);
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleClosePreviewModal = () => {
+    setIsPreviewModalOpen(false);
+    setSelectedTemplateForPreview(null);
   };
 
   const paginatedTemplates = templates ? templates.slice(
@@ -75,7 +88,11 @@ const Templates = () => {
             {templates && templates.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
                 {paginatedTemplates.map((template) => (
-                  <TemplateCard key={template.id} template={template} />
+                  <TemplateCard 
+                    key={template.id} 
+                    template={template} 
+                    onPreview={handleOpenPreviewModal} // Pass the handler
+                  />
                 ))}
               </div>
             ) : (
@@ -121,6 +138,14 @@ const Templates = () => {
           </>
         )}
       </div>
+
+      {/* Preview Modal */}
+      {isPreviewModalOpen && selectedTemplateForPreview && (
+        <TemplatePreviewModal 
+          template={selectedTemplateForPreview} 
+          onClose={handleClosePreviewModal} 
+        />
+      )}
     </div>
   );
 };

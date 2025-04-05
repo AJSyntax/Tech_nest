@@ -43,6 +43,11 @@ const Header = () => {
             <Link href="/features" className={`text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium ${location === '/features' ? 'text-primary-600' : ''}`}>
               Features
             </Link>
+            {user && (
+              <Link href="/my-portfolios" className={`text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium ${location === '/my-portfolios' ? 'text-primary-600' : ''}`}>
+                My Portfolios
+              </Link>
+            )}
           </nav>
           
           <div className="hidden md:flex items-center space-x-4">
@@ -72,6 +77,11 @@ const Header = () => {
                         </DropdownMenuItem>
                       </Link>
                     )}
+                    <Link href="/my-portfolios">
+                      <DropdownMenuItem>
+                        My Portfolios
+                      </DropdownMenuItem>
+                    </Link>
                     <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
                       {logoutMutation.isPending ? (
                         <>
