@@ -1,10 +1,15 @@
 import { usePortfolio } from "@/context/PortfolioContext";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Paintbrush, Download, Eye } from "lucide-react";
+import { ChevronLeft, Paintbrush, Upload, Save } from "lucide-react"; // Import Save, Upload icons
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState } from "react";
+
+// Define props to accept handleSave function
+interface ColorSchemeFormProps {
+  handleSave: () => Promise<void>; // Function to save progress
+}
 
 // Predefined color schemes
 const colorPresets = [
@@ -60,7 +65,7 @@ const colorPresets = [
   },
 ];
 
-const ColorSchemeForm = () => {
+const ColorSchemeForm: React.FC<ColorSchemeFormProps> = ({ handleSave }) => { // Accept handleSave prop
   const { portfolio, updatePortfolio, prevStep, openExportModal, openTemplateModal } = usePortfolio();
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
@@ -82,12 +87,14 @@ const ColorSchemeForm = () => {
   };
 
   const handleBack = () => {
+    // Update context before going back
+    updatePortfolio({ colorScheme: portfolio.colorScheme });
+    // Update context before going back
+    updatePortfolio({ colorScheme: portfolio.colorScheme });
     prevStep();
   };
 
-  const handleSaveAndExport = async () => {
-    openExportModal();
-  };
+  // No handleSubmit needed here anymore, as Save/Export are separate actions
 
   return (
     <div className="space-y-6">
@@ -203,27 +210,31 @@ const ColorSchemeForm = () => {
         </div>
       </div>
 
+      {/* Restore Navigation Buttons, but modify for Save/Export */}
       <div className="mt-8 flex justify-between">
         <Button type="button" variant="outline" onClick={handleBack}>
           <ChevronLeft className="mr-2 h-4 w-4" />
           Previous: Education
         </Button>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => openExportModal()}
+          {/* Save Progress Button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSave} // Call handleSave passed from Create.tsx
             className="flex items-center"
           >
-            <Eye className="mr-2 h-4 w-4" />
-            Preview
+            <Save className="mr-2 h-4 w-4" />
+            Save Progress
           </Button>
-          <Button 
-            type="button" 
-            onClick={handleSaveAndExport}
+          {/* Export Button */}
+          <Button
+            type="button"
+            onClick={openExportModal} // Directly open the export modal
             className="flex items-center"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Save & Export
+            <Upload className="mr-2 h-4 w-4" />
+            Export
           </Button>
         </div>
       </div>

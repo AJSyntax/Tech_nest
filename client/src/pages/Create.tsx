@@ -7,13 +7,17 @@ import PersonalInfoForm from "@/components/builder/PersonalInfoForm";
 import SkillsForm from "@/components/builder/SkillsForm";
 import ProjectsForm from "@/components/builder/ProjectsForm";
 import EducationForm from "@/components/builder/EducationForm";
-import ColorSchemeForm from "@/components/builder/ColorSchemeForm";
+import ColorSchemeForm from "@/components/builder/ColorSchemeForm"; // Import the correct component
 import TemplateSelectionModal from "@/components/modals/TemplateSelectionModal";
 import ExportModal from "@/components/modals/ExportModal";
 import { FormStep } from "@/types/portfolio";
 import { useQuery } from "@tanstack/react-query";
 import { Template } from "@shared/schema";
 import { useSearch } from "wouter";
+// Remove unused imports related to global buttons
+// import { Button } from "@/components/ui/button";
+// import { ChevronLeft, ChevronRight, Save, Upload } from "lucide-react";
+import { useToast } from "@/hooks/use-toast"; // Restore this import
 
 // Define props for the Create component
 interface CreateProps {
@@ -30,9 +34,14 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
     openTemplateModal,
     closeTemplateModal,
     updatePortfolio,
-    savePortfolio, // We'll modify this function in the context later
-    closeExportModal
+    savePortfolio, // Keep this, it's used by handleFinish (which we might remove later)
+    closeExportModal,
+    // Remove context items only needed for global buttons
+    // prevStep,
+    // nextStep,
+    // openExportModal
   } = usePortfolio();
+  const { toast } = useToast(); // Add useToast back
 
   const [, setLocation] = useLocation();
   const searchString = useSearch();
@@ -52,6 +61,23 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
       }
     }
   }, [portfolioId, templateIdParam, templates, updatePortfolio]);
+
+  // Define handleSave here, to be passed ONLY to ColorSchemeForm
+  const handleSave = async () => {
+    const savedId = await savePortfolio(portfolioId);
+    // Add toast notification here
+     if (savedId) {
+       toast({
+         title: "Progress Saved",
+         description: "Your portfolio draft has been saved.",
+       });
+       // Optionally update the URL if creating a new portfolio and it now has an ID
+       if (!portfolioId && savedId) {
+         setLocation(`/edit/${savedId}`, { replace: true });
+       }
+     }
+  };
+
 
   const steps: FormStep[] = [
     {
@@ -82,21 +108,15 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
       id: "design",
       title: "Design Customization",
       description: "Make it your own",
-      component: <ColorSchemeForm />
+      // Pass handleSave ONLY to ColorSchemeForm
+      component: <ColorSchemeForm handleSave={handleSave} />
     }
   ];
 
   const currentStepData = steps[currentStep];
 
-  const handleFinish = async () => {
-    // Pass the portfolioId (if it exists) to savePortfolio
-    // savePortfolio will handle whether to POST (create) or PUT (update)
-    const savedPortfolioId = await savePortfolio(portfolioId); // Pass ID here
-    if (savedPortfolioId) {
-      // Redirect to preview page after save/update
-      setLocation(`/preview/${savedPortfolioId}`);
-    }
-  };
+  // handleFinish is likely no longer needed if Export is separate
+  // const handleFinish = async () => { ... };
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -124,8 +144,10 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
 
               {/* Form Content */}
               <div className="p-6">
+                {/* Render the component for the current step */}
                 {currentStepData.component}
               </div>
+              {/* No Global Navigation Buttons Here */}
             </div>
           </div>
 

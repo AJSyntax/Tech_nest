@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Project } from "@shared/schema";
-import { 
+import {
   Card,
   CardContent,
   CardDescription,
@@ -13,14 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  Trash2, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
   X,
   ExternalLink,
-  Github 
+  Github
 } from "lucide-react";
 
 const ProjectsForm = () => {
@@ -46,7 +46,7 @@ const ProjectsForm = () => {
 
   const handleAddTech = () => {
     if (!techInput.trim()) return;
-    
+
     setNewProject(prev => ({
       ...prev,
       technologies: [...prev.technologies, techInput.trim()]
@@ -63,7 +63,7 @@ const ProjectsForm = () => {
 
   const handleAddProject = () => {
     if (!newProject.title.trim() || !newProject.description.trim()) return;
-    
+
     setProjects(prev => [...prev, { ...newProject }]);
     setNewProject({
       title: "",
@@ -79,11 +79,13 @@ const ProjectsForm = () => {
     setProjects(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Called on "Next"
   const handleSubmit = () => {
     updatePortfolio({ projects });
     nextStep();
   };
 
+  // Called on "Previous"
   const handleBack = () => {
     updatePortfolio({ projects });
     prevStep();
@@ -93,7 +95,7 @@ const ProjectsForm = () => {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium text-slate-900 mb-4">Add Your Projects</h3>
-        
+
         <div className="space-y-4">
           <div>
             <Label htmlFor="project-title">Project Title</Label>
@@ -105,7 +107,7 @@ const ProjectsForm = () => {
               placeholder="Portfolio Website"
             />
           </div>
-          
+
           <div>
             <Label htmlFor="project-description">Description</Label>
             <Textarea
@@ -117,7 +119,7 @@ const ProjectsForm = () => {
               rows={3}
             />
           </div>
-          
+
           <div>
             <Label htmlFor="project-image">Project Image URL</Label>
             <Input
@@ -128,7 +130,7 @@ const ProjectsForm = () => {
               placeholder="https://example.com/project-image.jpg"
             />
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="project-live">Live Demo URL</Label>
@@ -151,12 +153,12 @@ const ProjectsForm = () => {
               />
             </div>
           </div>
-          
+
           <div>
             <Label>Technologies Used</Label>
             <div className="flex flex-wrap gap-2 mb-2">
               {newProject.technologies.map((tech, index) => (
-                <div 
+                <div
                   key={index}
                   className="bg-primary-100 text-primary-800 px-2 py-1 rounded-md text-sm flex items-center"
                 >
@@ -184,8 +186,8 @@ const ProjectsForm = () => {
                   }
                 }}
               />
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 onClick={handleAddTech}
                 variant="outline"
               >
@@ -194,7 +196,7 @@ const ProjectsForm = () => {
             </div>
           </div>
         </div>
-        
+
         <Button
           type="button"
           onClick={handleAddProject}
@@ -208,7 +210,7 @@ const ProjectsForm = () => {
 
       <div className="mt-8">
         <h3 className="text-lg font-medium text-slate-900 mb-4">Your Projects</h3>
-        
+
         {projects.length === 0 ? (
           <div className="text-center p-8 border border-dashed border-slate-300 rounded-md">
             <p className="text-slate-500">No projects added yet. Add your first project using the form above.</p>
@@ -219,9 +221,9 @@ const ProjectsForm = () => {
               <Card key={index} className="overflow-hidden">
                 {project.imageUrl && (
                   <div className="aspect-video w-full overflow-hidden">
-                    <img 
-                      src={project.imageUrl} 
-                      alt={project.title} 
+                    <img
+                      src={project.imageUrl}
+                      alt={project.title}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -231,7 +233,7 @@ const ProjectsForm = () => {
                   <CardDescription>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {project.technologies.map((tech, techIndex) => (
-                        <span 
+                        <span
                           key={techIndex}
                           className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-xs"
                         >
@@ -247,9 +249,9 @@ const ProjectsForm = () => {
                 <CardFooter className="flex justify-between">
                   <div className="flex space-x-2">
                     {project.liveUrl && (
-                      <a 
-                        href={project.liveUrl} 
-                        target="_blank" 
+                      <a
+                        href={project.liveUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-primary-600 hover:text-primary-800 flex items-center"
                       >
@@ -258,9 +260,9 @@ const ProjectsForm = () => {
                       </a>
                     )}
                     {project.codeUrl && (
-                      <a 
-                        href={project.codeUrl} 
-                        target="_blank" 
+                      <a
+                        href={project.codeUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-primary-600 hover:text-primary-800 flex items-center"
                       >
@@ -284,6 +286,7 @@ const ProjectsForm = () => {
         )}
       </div>
 
+      {/* Restore Navigation Buttons */}
       <div className="mt-8 flex justify-between">
         <Button type="button" variant="outline" onClick={handleBack}>
           <ChevronLeft className="mr-2 h-4 w-4" />

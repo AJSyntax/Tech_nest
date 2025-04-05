@@ -1,10 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { 
+import {
   PortfolioFormData,
   DevicePreviewType
 } from "@/types/portfolio";
 import { personalInfoSchema, skillSchema, projectSchema, educationSchema, colorSchemeSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { ZodError } from "zod"; // Import ZodError
+import { fromZodError } from "zod-validation-error"; // Import formatter
+
+// Define structure for validation result
+interface ValidationResult {
+  success: boolean;
+  stepIndex?: number;
+  stepName?: string;
+  error?: ZodError;
+}
 
 interface PortfolioContextType {
   portfolio: PortfolioFormData;
@@ -143,7 +153,7 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
 
   const openTemplateModal = () => setIsTemplateModalOpen(true);
   const closeTemplateModal = () => setIsTemplateModalOpen(false);
-  
+
   const openExportModal = () => setIsExportModalOpen(true);
   const closeExportModal = () => setIsExportModalOpen(false);
 
@@ -153,30 +163,63 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
     localStorage.removeItem("technest_portfolio_draft");
   };
 
-  const validatePortfolio = (): boolean => {
-    try {
-      personalInfoSchema.parse(portfolio.personalInfo);
-      portfolio.skills.forEach(skill => skillSchema.parse(skill));
-      portfolio.projects.forEach(project => projectSchema.parse(project));
-      portfolio.education.forEach(education => educationSchema.parse(education));
-      colorSchemeSchema.parse(portfolio.colorScheme);
-      return true;
-    } catch (error) {
-      return false;
+  // Enhanced validation function
+  const validatePortfolio = (): ValidationResult => {
+    // Map step names to their validation logic and index
+    const validationSteps = [
+      { name: "Personal Info", schema: personalInfoSchema, data: portfolio.personalInfo, index: 0 },
+      { name: "Skills", schema: skillSchema, data: portfolio.skills, index: 1, isArray: true },
+      { name: "Projects", schema: projectSchema, data: portfolio.projects, index: 2, isArray: true },
+      { name: "Education", schema: educationSchema, data: portfolio.education, index: 3, isArray: true },
+      { name: "Design", schema: colorSchemeSchema, data: portfolio.colorScheme, index: 4 },
+    ];
+
+    for (const step of validationSteps) {
+      if (step.isArray) {
+        // Validate each item in the array
+        for (const item of step.data as any[]) {
+           const result = step.schema.safeParse(item);
+           if (!result.success) {
+             return { success: false, stepIndex: step.index, stepName: step.name, error: result.error };
+           }
+        }
+      } else {
+         // Validate single object
+         const result = step.schema.safeParse(step.data);
+         if (!result.success) {
+           return { success: false, stepIndex: step.index, stepName: step.name, error: result.error };
+         }
+      }
     }
+
+    return { success: true }; // All validations passed
   };
 
   // Modify savePortfolio to accept optional ID and handle PUT requests for updates
   const savePortfolio = async (id?: string): Promise<number | undefined> => {
-    if (!validatePortfolio()) {
-      toast({
-        title: "Validation Error",
-        description: "Please complete all required fields before saving",
-        variant: "destructive"
-      });
-      return;
-    }
+    // --- VALIDATION DISABLED FOR TESTING ---
+    /*
+    const validationResult = validatePortfolio(); // Validation is ACTIVE
 
+    if (!validationResult.success) { // Check if validation failed
+      const { stepIndex, stepName, error } = validationResult;
+      const formattedError = error ? fromZodError(error) : { message: "Unknown validation error" };
+
+      toast({
+        title: `Validation Error on Step ${stepIndex! + 1}: ${stepName}`,
+        description: formattedError.message, // Use formatted Zod error message
+        variant: "destructive",
+      });
+      // Navigate user to the step with the error
+      if (stepIndex !== undefined) {
+        setCurrentStep(stepIndex);
+      }
+      return; // Stop the save process
+    }
+    */
+    // --- END VALIDATION DISABLED ---
+
+    // Proceed with saving regardless of validation
     const isUpdating = !!id;
     const url = isUpdating ? `/api/portfolios/${id}` : "/api/portfolios";
     const method = isUpdating ? "PUT" : "POST";
@@ -201,8 +244,8 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
         description: `Your portfolio has been ${isUpdating ? 'updated' : 'saved'}`,
       });
 
-      // Clear local storage draft after successful save/update
-      localStorage.removeItem("technest_portfolio_draft");
+      // DO NOT clear local storage draft here - allow users to save progress
+      // localStorage.removeItem("technest_portfolio_draft");
 
       return savedPortfolio.id; // Assuming API returns the portfolio with ID
     } catch (error) {
@@ -217,14 +260,14 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
   const loadPortfolio = async (id: number): Promise<void> => {
     try {
       const response = await fetch(`/api/portfolios/${id}`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const loadedPortfolio = await response.json();
       setPortfolio(loadedPortfolio);
-      
+
       toast({
         title: "Portfolio Loaded",
         description: "Successfully loaded your portfolio"

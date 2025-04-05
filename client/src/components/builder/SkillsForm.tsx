@@ -3,7 +3,7 @@ import { usePortfolio } from "@/context/PortfolioContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -69,13 +69,15 @@ const SkillsForm = () => {
     }));
   };
 
+  // Called when "Next" is clicked
   const handleSubmit = () => {
-    updatePortfolio({ skills });
+    updatePortfolio({ skills }); // Update context with current skills state
     nextStep();
   };
 
+  // Called when "Previous" is clicked
   const handleBack = () => {
-    updatePortfolio({ skills });
+    updatePortfolio({ skills }); // Update context before going back
     prevStep();
   };
 
@@ -123,7 +125,7 @@ const SkillsForm = () => {
             </Select>
           </div>
         </div>
-        
+
         <div className="mt-4">
           <Label htmlFor="skill-proficiency">
             Proficiency: {newSkill.proficiency}/5
@@ -143,7 +145,7 @@ const SkillsForm = () => {
             <span>Expert</span>
           </div>
         </div>
-        
+
         <Button
           type="button"
           onClick={handleAddSkill}
@@ -157,7 +159,7 @@ const SkillsForm = () => {
 
       <div className="mt-8">
         <h3 className="text-lg font-medium text-slate-900 mb-4">Your Skills</h3>
-        
+
         {skills.length === 0 ? (
           <div className="text-center p-8 border border-dashed border-slate-300 rounded-md">
             <p className="text-slate-500">No skills added yet. Add your first skill using the form above.</p>
@@ -169,21 +171,22 @@ const SkillsForm = () => {
                 <h4 className="font-medium text-slate-700 mb-2">{category}</h4>
                 <div className="space-y-2">
                   {categorySkills.map((skill, index) => {
-                    const skillIndex = skills.findIndex(s => 
-                      s.name === skill.name && s.category === skill.category
+                    // Find the original index in the main skills array for removal
+                    const originalIndex = skills.findIndex(s =>
+                      s.name === skill.name && s.category === skill.category && s.proficiency === skill.proficiency
                     );
-                    
+
                     return (
-                      <div 
-                        key={index}
+                      <div
+                        key={`${skill.name}-${originalIndex}`} // Use a more stable key
                         className="flex items-center justify-between p-3 bg-slate-50 rounded-md border border-slate-200"
                       >
                         <div className="flex-1">
                           <div className="font-medium">{skill.name}</div>
                           <div className="flex items-center mt-1">
                             <div className="w-full bg-slate-200 rounded-full h-2">
-                              <div 
-                                className="bg-primary-600 h-2 rounded-full" 
+                              <div
+                                className="bg-primary-600 h-2 rounded-full"
                                 style={{ width: `${(skill.proficiency / 5) * 100}%` }}
                               ></div>
                             </div>
@@ -194,7 +197,7 @@ const SkillsForm = () => {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveSkill(skillIndex)}
+                          onClick={() => handleRemoveSkill(originalIndex)} // Use original index
                           className="ml-2"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -209,6 +212,7 @@ const SkillsForm = () => {
         )}
       </div>
 
+      {/* Restore Navigation Buttons */}
       <div className="mt-8 flex justify-between">
         <Button type="button" variant="outline" onClick={handleBack}>
           <ChevronLeft className="mr-2 h-4 w-4" />

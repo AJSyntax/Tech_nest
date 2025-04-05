@@ -31,7 +31,8 @@ function Router() {
         <ProtectedRoute path="/create" component={CreateWrapper} />
         <ProtectedRoute path="/edit/:id" component={CreateWrapper} /> {/* Add Edit route */}
         <ProtectedRoute path="/my-portfolios" component={MyPortfolios} />
-        <ProtectedRoute path="/preview/:id" component={PreviewWrapper} />
+        {/* Use regular Route for public preview */}
+        <Route path="/preview/:id" component={PreviewWrapper} />
         <ProtectedRoute path="/admin" component={AdminDashboard} />
         <Route component={NotFound} />
       </Switch>

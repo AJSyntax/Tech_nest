@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
+import {
   Form,
   FormControl,
   FormDescription,
@@ -15,7 +15,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { personalInfoSchema, PersonalInfo } from "@shared/schema";
-import { Github, Linkedin, Twitter, Plus, Trash2 } from "lucide-react";
+import { Github, Linkedin, Twitter, Plus, Trash2, ChevronRight } from "lucide-react"; // Added ChevronRight
 import { useState } from "react";
 
 const PersonalInfoForm = () => {
@@ -28,30 +28,31 @@ const PersonalInfoForm = () => {
     defaultValues: portfolio.personalInfo,
   });
 
+  // This onSubmit will be triggered by this component's "Next" button
   const onSubmit = (data: PersonalInfo) => {
     updatePortfolio({ personalInfo: data });
-    nextStep();
+    nextStep(); // Go to the next step after successful validation and update
   };
 
   const addSocialLink = () => {
     if (!socialPlatform || !socialUrl) return;
-    
+
     try {
       // Validate URL format
       new URL(socialUrl);
-      
+
       const newSocialLinks = [
         ...(form.getValues().socialLinks || []),
         { platform: socialPlatform, url: socialUrl }
       ];
-      
+
       form.setValue('socialLinks', newSocialLinks);
       setSocialPlatform("");
       setSocialUrl("");
     } catch (error) {
-      form.setError('socialLinks', { 
-        type: 'manual', 
-        message: 'Please enter a valid URL' 
+      form.setError('socialLinks', {
+        type: 'manual',
+        message: 'Please enter a valid URL'
       });
     }
   };
@@ -64,8 +65,10 @@ const PersonalInfoForm = () => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-4">
+      {/* The ID allows Create.tsx to target this form for submission (if needed, but not used in current plan) */}
+      <form id="personal-info-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* ... rest of the form fields ... */}
+         <div className="flex flex-col sm:flex-row gap-4">
           <FormField
             control={form.control}
             name="firstName"
@@ -118,10 +121,10 @@ const PersonalInfoForm = () => {
             <FormItem>
               <FormLabel>About Me</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="I'm a passionate developer with 5 years of experience..." 
+                <Textarea
+                  placeholder="I'm a passionate developer with 5 years of experience..."
                   className="min-h-[120px]"
-                  {...field} 
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -138,7 +141,7 @@ const PersonalInfoForm = () => {
               <div className="flex items-center space-x-6">
                 <div className="shrink-0">
                   {field.value ? (
-                    <img 
+                    <img
                       className="h-16 w-16 object-cover rounded-full"
                       src={field.value}
                       alt="Profile photo"
@@ -150,10 +153,10 @@ const PersonalInfoForm = () => {
                   )}
                 </div>
                 <FormControl>
-                  <Input 
-                    type="url" 
-                    placeholder="https://example.com/your-photo.jpg" 
-                    {...field} 
+                  <Input
+                    type="url"
+                    placeholder="https://example.com/your-photo.jpg"
+                    {...field}
                   />
                 </FormControl>
               </div>
@@ -173,10 +176,10 @@ const PersonalInfoForm = () => {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="johndoe@example.com" 
-                    {...field} 
+                  <Input
+                    type="email"
+                    placeholder="johndoe@example.com"
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -200,7 +203,7 @@ const PersonalInfoForm = () => {
 
         <div className="space-y-4">
           <Label>Social Media Links</Label>
-          
+
           <div className="flex flex-col space-y-4">
             {form.getValues().socialLinks?.map((link, index) => (
               <div key={index} className="flex items-center space-x-2">
@@ -212,9 +215,9 @@ const PersonalInfoForm = () => {
                     <span className="text-sm font-medium">{link.platform.slice(0, 2).toUpperCase()}</span>
                   )}
                 </div>
-                <Input 
-                  value={link.url} 
-                  readOnly 
+                <Input
+                  value={link.url}
+                  readOnly
                   className="flex-1"
                 />
                 <Button
@@ -228,7 +231,7 @@ const PersonalInfoForm = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="flex items-end space-x-2">
             <div className="w-1/3">
               <Label htmlFor="platform">Platform</Label>
@@ -263,12 +266,12 @@ const PersonalInfoForm = () => {
           )}
         </div>
 
+        {/* Restore Navigation Button */}
         <div className="mt-8 flex justify-end">
-          <Button type="button" variant="outline" className="mr-3">
-            Save Draft
-          </Button>
+          {/* No Previous button on the first step */}
           <Button type="submit">
             Next: Skills
+            <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </form>

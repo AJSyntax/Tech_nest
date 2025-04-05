@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Education } from "@shared/schema";
 import { ChevronLeft, ChevronRight, Plus, Trash2, GraduationCap, Briefcase } from "lucide-react";
-import { 
+import {
   Card,
   CardContent,
   CardDescription,
@@ -43,7 +43,7 @@ const EducationForm = () => {
 
   const handleAddEntry = () => {
     if (!newEntry.institution.trim() || !newEntry.degree.trim()) return;
-    
+
     setEducation(prev => [...prev, { ...newEntry }]);
     setNewEntry({
       institution: "",
@@ -58,11 +58,13 @@ const EducationForm = () => {
     setEducation(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Called on "Next"
   const handleSubmit = () => {
     updatePortfolio({ education });
     nextStep();
   };
 
+  // Called on "Previous"
   const handleBack = () => {
     updatePortfolio({ education });
     prevStep();
@@ -70,7 +72,7 @@ const EducationForm = () => {
 
   // Helper to determine if we're adding education or experience
   const isEducation = activeTab === "education";
-  
+
   // Labels based on active tab
   const labels = {
     institution: isEducation ? "School/University" : "Company/Organization",
@@ -92,16 +94,16 @@ const EducationForm = () => {
               Experience
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="education">
             <h3 className="text-lg font-medium text-slate-900 mb-4">Add Your Education</h3>
           </TabsContent>
-          
+
           <TabsContent value="experience">
             <h3 className="text-lg font-medium text-slate-900 mb-4">Add Your Work Experience</h3>
           </TabsContent>
         </Tabs>
-        
+
         <div className="space-y-4">
           <div>
             <Label htmlFor="institution">{labels.institution}</Label>
@@ -113,7 +115,7 @@ const EducationForm = () => {
               placeholder={isEducation ? "Harvard University" : "Google, Inc."}
             />
           </div>
-          
+
           <div>
             <Label htmlFor="degree">{labels.degree}</Label>
             <Input
@@ -124,7 +126,7 @@ const EducationForm = () => {
               placeholder={isEducation ? "Bachelor of Science in Computer Science" : "Senior Frontend Developer"}
             />
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="startDate">Start Date</Label>
@@ -149,7 +151,7 @@ const EducationForm = () => {
               />
             </div>
           </div>
-          
+
           <div>
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -157,15 +159,15 @@ const EducationForm = () => {
               name="description"
               value={newEntry.description}
               onChange={handleChange}
-              placeholder={isEducation 
-                ? "Graduated with honors. Focused on web development and AI." 
+              placeholder={isEducation
+                ? "Graduated with honors. Focused on web development and AI."
                 : "Led a team of 5 developers. Implemented new features and improved performance."
               }
               rows={3}
             />
           </div>
         </div>
-        
+
         <Button
           type="button"
           onClick={handleAddEntry}
@@ -179,12 +181,12 @@ const EducationForm = () => {
 
       <div className="mt-8">
         <h3 className="text-lg font-medium text-slate-900 mb-4">
-          {education.length === 0 
-            ? "No entries yet" 
+          {education.length === 0
+            ? "No entries yet"
             : `Your Education & Experience (${education.length})`
           }
         </h3>
-        
+
         {education.length === 0 ? (
           <div className="text-center p-8 border border-dashed border-slate-300 rounded-md">
             <p className="text-slate-500">No education or experience added yet. Use the form above to add your first entry.</p>
@@ -192,8 +194,9 @@ const EducationForm = () => {
         ) : (
           <div className="space-y-4">
             {education.map((entry, index) => {
-              const isEducationEntry = !entry.institution.includes(",") && !entry.institution.includes("Inc") && !entry.institution.includes("LLC");
-              
+              // Simple heuristic to guess if it's education or experience based on common terms
+              const isLikelyEducation = entry.degree?.toLowerCase().includes('degree') || entry.degree?.toLowerCase().includes('bachelor') || entry.degree?.toLowerCase().includes('master') || entry.degree?.toLowerCase().includes('phd') || entry.institution?.toLowerCase().includes('university') || entry.institution?.toLowerCase().includes('college') || entry.institution?.toLowerCase().includes('school');
+
               return (
                 <Card key={index}>
                   <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -201,7 +204,7 @@ const EducationForm = () => {
                       <CardTitle className="text-base font-semibold">{entry.institution}</CardTitle>
                       <CardDescription>{entry.degree}</CardDescription>
                     </div>
-                    {isEducationEntry ? (
+                    {isLikelyEducation ? (
                       <GraduationCap className="h-5 w-5 text-primary-500" />
                     ) : (
                       <Briefcase className="h-5 w-5 text-secondary-500" />
@@ -232,6 +235,7 @@ const EducationForm = () => {
         )}
       </div>
 
+      {/* Restore Navigation Buttons */}
       <div className="mt-8 flex justify-between">
         <Button type="button" variant="outline" onClick={handleBack}>
           <ChevronLeft className="mr-2 h-4 w-4" />

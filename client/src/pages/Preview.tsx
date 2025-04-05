@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { PortfolioResponse } from "@/types/portfolio";
+import { PortfolioResponse, PortfolioFormData } from "@/types/portfolio"; // Correct import path
 import { Button } from "@/components/ui/button";
-import { Template } from "@shared/schema";
+import { Template } from "@shared/schema"; // Keep Template from shared
 import { Download, ArrowLeft, Monitor, Smartphone, Tablet } from "lucide-react";
-import { generatePortfolioZip } from "@/lib/portfolio-generator";
+import { generatePortfolioZip, generateCss, generateJs } from "@/lib/portfolio-generator";
+import { generateHtml } from "@/utils/htmlGenerator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const deviceSizes = {
@@ -21,12 +22,23 @@ const Preview = () => {
   const { toast } = useToast();
   const [device, setDevice] = useState<"mobile" | "tablet" | "desktop">("desktop");
   const [isExporting, setIsExporting] = useState(false);
+  const [previewSrcDoc, setPreviewSrcDoc] = useState<string | null>(null);
 
-  const { data: portfolio, isLoading: isLoadingPortfolio } = useQuery<PortfolioResponse>({
+  // Use PortfolioResponse for the query result type
+  const { 
+    data: portfolio, 
+    isLoading: isLoadingPortfolio, 
+    isError: isPortfolioError 
+  } = useQuery<PortfolioResponse>({
     queryKey: [`/api/portfolios/${id}`],
     enabled: !!id,
     retry: 1,
-    onError: () => {
+    // Remove onError, handle with isError below
+  });
+
+  // Handle portfolio loading error
+  useEffect(() => {
+    if (isPortfolioError) {
       toast({
         title: "Error",
         description: "Could not load portfolio. It may have been deleted or does not exist.",
@@ -34,21 +46,106 @@ const Preview = () => {
       });
       setLocation("/");
     }
-  });
+  }, [isPortfolioError, setLocation, toast]);
 
-  const { data: templates } = useQuery<Template[]>({
+
+  const { data: templates, isLoading: isLoadingTemplates } = useQuery<Template[]>({
     queryKey: ['/api/templates'],
-    enabled: !!portfolio
+    enabled: !!portfolio // Fetch templates only after portfolio data is loaded
   });
 
-  const selectedTemplate = templates?.find(t => t.id.toString() === portfolio?.templateId);
+  const selectedTemplate = useMemo(() => {
+    if (!portfolio || !templates) return undefined;
+    // portfolio.templateId is already a string, t.id is likely a number
+    return templates.find(t => t.id.toString() === portfolio.templateId); 
+  }, [portfolio, templates]);
+
+  // Generate preview content when portfolio and template data are ready
+  useEffect(() => {
+    // Ensure we have portfolio data (type PortfolioResponse) and the selected template
+    if (portfolio && selectedTemplate && !isLoadingPortfolio && !isLoadingTemplates) {
+      // Construct the PortfolioFormData object needed by the generator functions
+      const portfolioDataForGeneration: PortfolioFormData = {
+        name: portfolio.name,
+        templateId: portfolio.templateId,
+        personalInfo: portfolio.personalInfo,
+        skills: portfolio.skills,
+        projects: portfolio.projects,
+        education: portfolio.education,
+        colorScheme: portfolio.colorScheme,
+        isPublished: portfolio.isPublished, // Include isPublished if needed by generators, otherwise optional
+      };
+
+      try {
+        const htmlContent = generateHtml(portfolioDataForGeneration, selectedTemplate.name || 'Custom');
+        const cssContent = generateCss(portfolioDataForGeneration);
+        const jsContent = generateJs(); // Assuming generateJs doesn't need portfolio data
+
+        const fullHtml = `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${portfolioDataForGeneration.name || 'Portfolio'} Preview</title>
+            <style>${cssContent}</style>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+          </head>
+          <body>
+            ${htmlContent}
+            <script>${jsContent}</script>
+          </body>
+          </html>
+        `;
+        setPreviewSrcDoc(fullHtml);
+      } catch (error) {
+        console.error("Error generating preview:", error);
+        toast({
+          title: "Preview Error",
+          description: "Could not generate portfolio preview.",
+          variant: "destructive"
+        });
+        setPreviewSrcDoc('<p>Error generating preview.</p>');
+      }
+    } else if (!isLoadingPortfolio && !isLoadingTemplates && portfolio && !selectedTemplate) {
+       // Handle case where template might not be found (e.g., deleted template)
+       console.warn("Selected template not found for portfolio:", portfolio.templateId);
+       toast({
+         title: "Template Not Found",
+         description: "The template associated with this portfolio could not be found. Preview might be incomplete.",
+         // Removed variant: "warning"
+       });
+       // Optionally generate with a default/fallback or show an error
+       setPreviewSrcDoc('<p>Error: Template not found.</p>');
+    } else {
+      // Reset srcDoc while loading or if data is missing
+      setPreviewSrcDoc(null);
+    }
+  }, [portfolio, selectedTemplate, isLoadingPortfolio, isLoadingTemplates, toast]);
+
 
   const handleExport = async () => {
-    if (!portfolio) return;
+    // Use the full portfolio response data for export
+    if (!portfolio) return; 
+
+    // Construct PortfolioFormData for the zip generator
+     const portfolioDataForExport: PortfolioFormData = {
+        name: portfolio.name,
+        templateId: portfolio.templateId,
+        personalInfo: portfolio.personalInfo,
+        skills: portfolio.skills,
+        projects: portfolio.projects,
+        education: portfolio.education,
+        colorScheme: portfolio.colorScheme,
+        isPublished: portfolio.isPublished,
+      };
     
     try {
       setIsExporting(true);
-      await generatePortfolioZip(portfolio, selectedTemplate?.name || 'Custom');
+      // Pass the correctly typed data to the zip generator
+      await generatePortfolioZip(portfolioDataForExport, selectedTemplate?.name || 'Custom'); 
       
       toast({
         title: "Success!",
@@ -96,7 +193,7 @@ const Preview = () => {
               {isLoadingPortfolio ? (
                 <Skeleton className="h-8 w-48" />
               ) : (
-                `${portfolio?.name || 'Portfolio'} Preview`
+                `${portfolio?.name || 'Portfolio'} Preview` // Access name directly from portfolio response
               )}
             </h1>
           </div>
@@ -128,17 +225,18 @@ const Preview = () => {
         </div>
         
         {isLoadingPortfolio ? (
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex justify-center">
-            <Skeleton className="w-full max-w-3xl h-[600px]" />
-          </div>
-        ) : portfolio ? (
-          <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex justify-center">
-            <div style={{ width: deviceSizes[device], height: "600px" }} className="border border-slate-200 rounded-lg overflow-auto">
-              <iframe 
-                src={`/api/preview/${id}`}
-                title="Portfolio Preview"
-                className="w-full h-full border-0"
-              />
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex justify-center">
+          <Skeleton className="w-full max-w-3xl h-[600px]" />
+        </div>
+      ) : portfolio && previewSrcDoc ? (
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex justify-center">
+          <div style={{ width: deviceSizes[device], height: "600px" }} className="border border-slate-200 rounded-lg overflow-auto">
+            <iframe
+              srcDoc={previewSrcDoc}
+              title="Portfolio Preview"
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin" // Added sandbox for security, allow scripts for JS
+            />
             </div>
           </div>
         ) : (

@@ -52,7 +52,7 @@ export async function generatePortfolioZip(
 /**
  * Generates CSS content based on portfolio color scheme
  */
-function generateCss(portfolio: PortfolioFormData): string {
+export function generateCss(portfolio: PortfolioFormData): string {
   const { colorScheme } = portfolio;
   
   return `
@@ -279,7 +279,7 @@ footer {
 /**
  * Generates basic JavaScript for the portfolio
  */
-function generateJs(): string {
+export function generateJs(): string {
   return `
 // Simple script to handle navigation highlighting and smooth scrolling
 document.addEventListener('DOMContentLoaded', function() {
