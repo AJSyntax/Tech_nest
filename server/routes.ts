@@ -1,8 +1,10 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db"; // Import db
+import { eq } from "drizzle-orm"; // Import eq
 import { ZodError } from "zod";
-import { portfolioSchema, insertUserSchema, insertTemplateSchema } from "@shared/schema";
+import { portfolioSchema, insertUserSchema, insertTemplateSchema, users } from "@shared/schema"; // Import users
 import { fromZodError } from "zod-validation-error";
 import { setupAuth, hashPassword } from "./auth";
 
@@ -265,16 +267,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the template data
       const validatedData = insertTemplateSchema.parse(req.body);
       
-      // For this demo, we'll implement a simple update by deleting and recreating
-      // In a real app, we would need proper update methods in the storage interface
+      // Update the template using the new storage method
+      const updatedTemplate = await storage.updateTemplate(id, validatedData);
       
-      // Since we don't have an update method, we'll simulate by creating a new template
-      // with the same ID. This is obviously not ideal but works for demonstration.
-      // This technique should NOT be used in production!
-      const updatedTemplate = await storage.createTemplate({
-        ...validatedData,
-        createdBy: existingTemplate.createdBy
-      });
+      if (!updatedTemplate) {
+        // This case might happen if the update fails for some reason, 
+        // though Drizzle's .returning() should handle non-existent IDs.
+        return res.status(404).json({ message: "Template not found after update attempt" });
+      }
       
       res.json(updatedTemplate);
     } catch (error) {
@@ -286,11 +286,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  apiRouter.get("/admin/users", isAdmin, async (req, res) => {
+  apiRouter.delete("/admin/templates/:id", isAdmin, async (req, res) => {
     try {
-      // In a real app, we would add a method to storage to get all users
-      // For now, we just return an empty array
-      res.json([]);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid template ID" });
+      }
+
+      // Check if template exists before attempting delete (optional but good practice)
+      const existingTemplate = await storage.getTemplate(id);
+      if (!existingTemplate) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      const success = await storage.deleteTemplate(id);
+      if (success) {
+        res.status(204).send(); // No Content
+      } else {
+        // This might happen if the template was deleted between the check and the delete call
+        res.status(404).json({ message: "Template not found or could not be deleted" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  apiRouter.get("/admin/users", isAdmin, async (_req, res) => {
+    try {
+      // Fetch all users using the new storage method
+      const allUsers = await storage.getAllUsers();
+      // Optionally filter out sensitive data like passwords before sending
+      const safeUsers = allUsers.map(({ password, ...user }) => user); 
+      res.json(safeUsers);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch users" });
     }
@@ -298,29 +325,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Using hashPassword imported at the top of the file
 
-  // Create admin and regular user accounts if they don't exist
+  // Ensure default admin and user accounts exist and are configured
   try {
-    const adminUser = await storage.getUserByUsername("admin");
+    const adminUsername = "admin";
+    const adminPassword = "adminpassword";
+    const demoUsername = "user";
+    const demoPassword = "userpassword";
+
+    let adminUser = await storage.getUserByUsername(adminUsername);
+    const hashedAdminPassword = await hashPassword(adminPassword);
+
     if (!adminUser) {
-      const hashedPassword = await hashPassword("adminpassword");
-      await storage.createUser({
-        username: "admin",
-        password: hashedPassword,
+      // Create admin user if they don't exist
+      adminUser = await storage.createUser({
+        username: adminUsername,
+        password: hashedAdminPassword,
         role: "admin"
       });
       console.log("Admin user created");
+    } else {
+      // If admin user exists, ensure role is admin and update password
+      // This handles cases where the user might exist but with wrong role or password
+      console.log("Admin user found, ensuring role and password are correct.");
+      await db.update(users)
+        .set({ role: "admin", password: hashedAdminPassword })
+        .where(eq(users.id, adminUser.id))
+        .run();
     }
 
-    const demoUser = await storage.getUserByUsername("user");
+    // Ensure demo user exists
+    let demoUser = await storage.getUserByUsername(demoUsername);
     if (!demoUser) {
-      const hashedPassword = await hashPassword("userpassword");
+      const hashedDemoPassword = await hashPassword(demoPassword);
       await storage.createUser({
-        username: "user",
-        password: hashedPassword,
+        username: demoUsername,
+        password: hashedDemoPassword,
         role: "user"
       });
       console.log("Demo user created");
     }
+    // Optionally, update demo user password if needed (similar to admin)
+    // else {
+    //   const hashedDemoPassword = await hashPassword(demoPassword);
+    //   await db.update(users).set({ password: hashedDemoPassword }).where(eq(users.id, demoUser.id)).run();
+    // }
+
   } catch (error) {
     console.error("Error creating default users:", error);
   }

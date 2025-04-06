@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import MyPortfolios from "./pages/MyPortfolios"; // Import the new page
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { PortfolioProvider } from "./context/PortfolioContext"; // Import PortfolioProvider
 import CreateWrapper from "./pages/CreateWrapper";
 import PreviewWrapper from "./pages/PreviewWrapper";
 
@@ -46,7 +47,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
+        <PortfolioProvider> {/* Wrap Router with PortfolioProvider */}
+          <Router />
+        </PortfolioProvider>
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>

@@ -2,10 +2,19 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
+import connectSqlite3 from "connect-sqlite3"; // Import connect-sqlite3
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage";
+import { storage } from "./storage"; // storage is now SqliteStorage, but we don't need its sessionStore anymore
 import { User as SelectUser } from "@shared/schema";
+
+// Initialize SQLite session store
+const SQLiteStore = connectSqlite3(session);
+const sessionStore = new SQLiteStore({
+  db: "database.sqlite", // Use the same database file
+  dir: ".", // Specify the directory for the database file
+  table: "sessions" // Optional: specify table name for sessions
+});
 
 declare global {
   namespace Express {
@@ -48,7 +57,7 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || "technest-session-secret",
     resave: false,
     saveUninitialized: false,
-    store: storage.sessionStore,
+    store: sessionStore as session.Store, // Cast to session.Store to resolve type mismatch
     cookie: {
       secure: process.env.NODE_ENV === "production",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours

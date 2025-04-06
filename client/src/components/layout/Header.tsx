@@ -40,9 +40,6 @@ const Header = () => {
             <Link href="/templates" className={`text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium ${location === '/templates' ? 'text-primary-600' : ''}`}>
               Templates
             </Link>
-            <Link href="/features" className={`text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium ${location === '/features' ? 'text-primary-600' : ''}`}>
-              Features
-            </Link>
             {user && (
               <Link href="/my-portfolios" className={`text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium ${location === '/my-portfolios' ? 'text-primary-600' : ''}`}>
                 My Portfolios

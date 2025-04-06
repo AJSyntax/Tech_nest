@@ -33,17 +33,6 @@ const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose, user, onLogout }
         >
           Templates
         </Link>
-        <Link 
-          href="/features" 
-          onClick={onClose}
-          className={`block px-3 py-2 rounded-md text-base font-medium ${
-            location === '/features' 
-              ? 'text-primary-600 bg-slate-50' 
-              : 'text-slate-600 hover:text-primary-600 hover:bg-slate-50'
-          }`}
-        >
-          Features
-        </Link>
       </div>
       <div className="pt-4 pb-3 border-t border-slate-200">
         <div className="px-2 space-y-1">

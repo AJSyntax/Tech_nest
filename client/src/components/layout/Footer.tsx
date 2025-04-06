@@ -33,7 +33,7 @@ const Footer = () => {
             </h3>
             <ul className="space-y-3">
               <li><Link href="/templates" className="text-slate-400 hover:text-white">Templates</Link></li>
-              <li><Link href="/features" className="text-slate-400 hover:text-white">Features</Link></li>
+              {/* Removed Features link */}
             </ul>
           </div>
           

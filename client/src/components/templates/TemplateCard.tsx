@@ -40,9 +40,16 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPreview }) => {
       <div className="p-5">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-slate-900">{template.name}</h3>
-          <Badge variant={template.isPremium ? "secondary" : "default"}>
-            {template.isPremium ? "Premium" : "Free"}
-          </Badge>
+          <div className="flex items-center space-x-2">
+            {template.isPremium && template.price && (
+              <span className="text-sm font-medium text-slate-700">
+                ${(template.price / 100).toFixed(2)}
+              </span>
+            )}
+            <Badge variant={template.isPremium ? "secondary" : "default"}>
+              {template.isPremium ? "Premium" : "Free"}
+            </Badge>
+          </div>
         </div>
         <p className="text-slate-500 mb-4">{template.description}</p>
         <div className="flex items-center text-sm text-slate-600">

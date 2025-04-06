@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query"; // Re-add React Query hooks
 import {
   PortfolioFormData,
   DevicePreviewType
 } from "@/types/portfolio";
-import { personalInfoSchema, skillSchema, projectSchema, educationSchema, colorSchemeSchema } from "@shared/schema";
+import { personalInfoSchema, skillSchema, projectSchema, educationSchema, colorSchemeSchema, Portfolio } from "@shared/schema"; // Re-add Portfolio type import
 import { useToast } from "@/hooks/use-toast";
 import { ZodError } from "zod"; // Import ZodError
 import { fromZodError } from "zod-validation-error"; // Import formatter
+import { apiRequest } from "@/lib/queryClient"; // Import apiRequest helper
 
 // Define structure for validation result
 interface ValidationResult {
@@ -102,6 +104,7 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // Re-add query client instance
 
   // Save to localStorage whenever portfolio changes (keep this)
   useEffect(() => {
@@ -195,7 +198,42 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
     return { success: true }; // All validations passed
   };
 
-  // Modify savePortfolio to accept optional ID and handle PUT requests for updates
+  // Define the mutation for saving/updating portfolio (Re-introducing)
+  const savePortfolioMutation = useMutation({
+    mutationFn: async ({ id, data }: { id?: string; data: PortfolioFormData }): Promise<Portfolio> => {
+      const isUpdating = !!id;
+      const url = isUpdating ? `/api/portfolios/${id}` : "/api/portfolios";
+      const method = isUpdating ? "PUT" : "POST";
+      // Use apiRequest which handles non-OK responses by throwing an error
+      const response = await apiRequest(method, url, data);
+      return response.json();
+    },
+    onSuccess: (savedPortfolio, { id }) => {
+      const isUpdating = !!id;
+      toast({
+        title: "Success!",
+        description: `Your portfolio has been ${isUpdating ? 'updated' : 'saved'}`,
+      });
+      // Invalidate the user's portfolio list query to refetch
+      queryClient.invalidateQueries({ queryKey: ['/api/user/portfolios'] });
+      // Optionally invalidate the specific portfolio query if editing
+      if (isUpdating) {
+        queryClient.invalidateQueries({ queryKey: [`/api/portfolios/${id}`] });
+      }
+      // DO NOT clear local storage draft here - allow users to save progress
+      // localStorage.removeItem("technest_portfolio_draft");
+    },
+    onError: (error: Error, { id }) => {
+      const isUpdating = !!id;
+      toast({
+        title: "Error",
+        description: `Failed to ${isUpdating ? 'update' : 'save'} portfolio: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Modify savePortfolio function to use the mutation (Re-introducing)
   const savePortfolio = async (id?: string): Promise<number | undefined> => {
     // --- VALIDATION DISABLED FOR TESTING ---
     /*
@@ -219,41 +257,14 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
     */
     // --- END VALIDATION DISABLED ---
 
-    // Proceed with saving regardless of validation
-    const isUpdating = !!id;
-    const url = isUpdating ? `/api/portfolios/${id}` : "/api/portfolios";
-    const method = isUpdating ? "PUT" : "POST";
-
+    // Call the mutation (Re-introducing)
     try {
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(portfolio)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const savedPortfolio = await response.json();
-
-      toast({
-        title: "Success!",
-        description: `Your portfolio has been ${isUpdating ? 'updated' : 'saved'}`,
-      });
-
-      // DO NOT clear local storage draft here - allow users to save progress
-      // localStorage.removeItem("technest_portfolio_draft");
-
-      return savedPortfolio.id; // Assuming API returns the portfolio with ID
+      const savedPortfolio = await savePortfolioMutation.mutateAsync({ id, data: portfolio });
+      return savedPortfolio.id; // Return the ID from the mutation result
     } catch (error) {
-      toast({
-        title: "Error",
-        description: `Failed to ${isUpdating ? 'update' : 'save'} portfolio`,
-        variant: "destructive",
-      });
+      // Error handling is done within the mutation's onError callback
+      console.error("Save portfolio mutation failed:", error);
+      return undefined; // Indicate failure
     }
   };
 
