@@ -16,6 +16,8 @@ export const users = sqliteTable("users", {
   resetTokenExpiry: integer("reset_token_expiry"),
   secretQuestion: text("secret_question"),
   secretAnswer: text("secret_answer"),
+  otpCode: text("otp_code"),
+  otpExpiry: integer("otp_expiry"),
   createdAt: integer("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -121,12 +123,19 @@ export const userRegistrationSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   password: passwordSchema,
-  confirmPassword: z.string(),
+  confirmPassword: z.string().optional(), // Make optional since we don't send it to the server
   secretQuestion: z.string().min(1, "Secret question is required"),
   secretAnswer: z.string().min(1, "Secret answer is required"),
-}).refine(data => data.password === data.confirmPassword, {
+  otpCode: z.string().length(6, "OTP must be 6 digits"),
+}).refine(data => !data.confirmPassword || data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
+});
+
+// OTP verification schema
+export const otpVerificationSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  otpCode: z.string().length(6, "OTP must be 6 digits"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -136,6 +145,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
   secretQuestion: true,
   secretAnswer: true,
+  otpCode: true,
+  otpExpiry: true,
 });
 
 export const insertPortfolioSchema = createInsertSchema(portfolios).omit({

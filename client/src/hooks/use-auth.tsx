@@ -29,6 +29,7 @@ type RegisterData = {
   confirmPassword?: string; // Optional in the type since we don't send it to the server
   secretQuestion: string;
   secretAnswer: string;
+  otpCode?: string; // OTP code for email verification
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -69,8 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: RegisterData) => {
       // Remove confirmPassword as it's not needed on the server
       const { confirmPassword, ...dataToSend } = credentials;
+      console.log("Sending registration data:", dataToSend);
       const res = await apiRequest("POST", "/api/register", dataToSend);
-      return await res.json();
+      const responseData = await res.json();
+      console.log("Registration response:", responseData);
+      return responseData;
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);

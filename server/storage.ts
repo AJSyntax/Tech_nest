@@ -19,6 +19,7 @@ export interface IStorage {
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   getUserByResetToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  createTempUser(email: string, otpCode: string, otpExpiry: number): Promise<User>;
   updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>; // Added for admin functionality
 
@@ -78,6 +79,19 @@ export class SqliteStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const result = await db.insert(users).values(insertUser).returning().get();
+    return result;
+  }
+
+  async createTempUser(email: string, otpCode: string, otpExpiry: number): Promise<User> {
+    // Create a temporary user with just email and OTP
+    const result = await db.insert(users).values({
+      username: `temp_${Date.now()}`, // Temporary username
+      email,
+      password: 'temp', // Will be replaced during registration
+      role: 'user',
+      otpCode,
+      otpExpiry
+    }).returning().get();
     return result;
   }
 

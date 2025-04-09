@@ -76,7 +76,7 @@ const PersonalInfoForm = () => {
               <FormItem className="w-full">
                 <FormLabel>First Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="John" {...field} />
+                  <Input placeholder="AJ" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -89,7 +89,7 @@ const PersonalInfoForm = () => {
               <FormItem className="w-full">
                 <FormLabel>Last Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Doe" {...field} />
+                  <Input placeholder="Villamor" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -178,7 +178,7 @@ const PersonalInfoForm = () => {
                 <FormControl>
                   <Input
                     type="email"
-                    placeholder="johndoe@example.com"
+                    placeholder="ajvillamor@example.com"
                     {...field}
                   />
                 </FormControl>
@@ -193,7 +193,7 @@ const PersonalInfoForm = () => {
               <FormItem>
                 <FormLabel>Phone</FormLabel>
                 <FormControl>
-                  <Input placeholder="+1 (555) 123-4567" {...field} />
+                  <Input placeholder="+63 (123) 123-4567" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
