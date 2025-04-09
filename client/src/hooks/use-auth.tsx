@@ -24,7 +24,11 @@ type LoginData = {
 
 type RegisterData = {
   username: string;
+  email: string;
   password: string;
+  confirmPassword?: string; // Optional in the type since we don't send it to the server
+  secretQuestion: string;
+  secretAnswer: string;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -63,20 +67,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: RegisterData) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
+      // Remove confirmPassword as it's not needed on the server
+      const { confirmPassword, ...dataToSend } = credentials;
+      const res = await apiRequest("POST", "/api/register", dataToSend);
       return await res.json();
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Registration successful",
-        description: `Welcome, ${user.username}!`,
+        description: `Welcome, ${user.username}! Please check your email to verify your account.`,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      // Handle validation errors from the server
+      let errorMessage = "Registration failed";
+      if (error.response && error.response.data) {
+        if (error.response.data.errors && error.response.data.errors.length > 0) {
+          errorMessage = error.response.data.errors.join(', ');
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Registration failed",
-        description: error.message || "Username may already be taken",
+        description: errorMessage,
         variant: "destructive",
       });
     },

@@ -6,8 +6,17 @@ import { z } from "zod";
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"), // Can be "user" or "admin"
+  isEmailVerified: integer("is_email_verified", { mode: "boolean" }).notNull().default(false),
+  verificationToken: text("verification_token"),
+  verificationTokenExpiry: integer("verification_token_expiry"),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: integer("reset_token_expiry"),
+  secretQuestion: text("secret_question"),
+  secretAnswer: text("secret_answer"),
+  createdAt: integer("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const portfolios = sqliteTable("portfolios", {
@@ -99,10 +108,34 @@ export const portfolioSchema = z.object({
   isPublished: z.boolean().default(false)
 });
 
+// Password complexity schema
+export const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
+// User registration schema with password validation
+export const userRegistrationSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: passwordSchema,
+  confirmPassword: z.string(),
+  secretQuestion: z.string().min(1, "Secret question is required"),
+  secretAnswer: z.string().min(1, "Secret answer is required"),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
+  email: true,
   password: true,
   role: true,
+  secretQuestion: true,
+  secretAnswer: true,
 });
 
 export const insertPortfolioSchema = createInsertSchema(portfolios).omit({

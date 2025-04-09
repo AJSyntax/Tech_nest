@@ -1,4 +1,4 @@
-import { 
+import {
   users, type User, type InsertUser,
   portfolios, type Portfolio, type InsertPortfolio,
   templates, type Template, type InsertTemplate
@@ -7,7 +7,7 @@ import { db } from "./db";
 import { eq, desc, asc, sql } from "drizzle-orm";
 import session from "express-session";
 // We will replace this later with connect-sqlite3
-import createMemoryStore from "memorystore"; 
+import createMemoryStore from "memorystore";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -15,7 +15,11 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>; // Added for admin functionality
 
   // Portfolio operations
@@ -60,8 +64,29 @@ export class SqliteStorage implements IStorage {
     return db.select().from(users).where(eq(users.username, username)).get();
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return db.select().from(users).where(eq(users.email, email)).get();
+  }
+
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    return db.select().from(users).where(eq(users.verificationToken, token)).get();
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    return db.select().from(users).where(eq(users.resetToken, token)).get();
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const result = await db.insert(users).values(insertUser).returning().get();
+    return result;
+  }
+
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    const result = await db.update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning()
+      .get();
     return result;
   }
 
