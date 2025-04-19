@@ -24,9 +24,42 @@ const MyPortfolios = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: portfolios, isLoading: portfoliosLoading, error } = useQuery<Portfolio[]>({
+  // Custom query function to handle authentication errors better
+  const fetchPortfolios = async (): Promise<Portfolio[]> => {
+    console.log('Fetching portfolios, auth state:', !!user);
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const response = await fetch('/api/user/portfolios', {
+      credentials: 'include', // Important for cookies/session
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    console.log('Portfolio API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Portfolio API error:', response.status, errorText);
+      throw new Error(`API error ${response.status}: ${errorText || response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Portfolios fetched:', data.length);
+    return data;
+  };
+
+  const { data: portfolios, isLoading: portfoliosLoading, error, refetch } = useQuery<Portfolio[]>({
     queryKey: ['/api/user/portfolios'],
+    queryFn: fetchPortfolios,
     enabled: !!user, // Only fetch if user is loaded and exists
+    retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchInterval: false,
+    staleTime: 30000 // 30 seconds
   });
 
   const deleteMutation = useMutation({
@@ -102,7 +135,27 @@ const MyPortfolios = () => {
         ) : error ? (
           <div className="text-center p-8 bg-white rounded-lg shadow">
             <h3 className="text-lg font-medium text-red-600">Error loading portfolios</h3>
-            <p className="mt-2 text-slate-600">Could not fetch your portfolios. Please try again later.</p>
+            <p className="mt-2 text-slate-600">Could not fetch your portfolios. Please try again.</p>
+            <p className="mt-2 text-xs text-slate-500">{error.message}</p>
+            <div className="mt-4 flex gap-4 justify-center">
+              <Button
+                onClick={() => refetch()}
+                variant="outline"
+              >
+                Retry
+              </Button>
+              <Button
+                onClick={() => {
+                  // Force refresh auth state
+                  queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+                  // Then retry portfolios
+                  setTimeout(() => refetch(), 500);
+                }}
+                variant="default"
+              >
+                Refresh Auth & Retry
+              </Button>
+            </div>
           </div>
         ) : portfolios && portfolios.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow: auto;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    
+    <div>
+        <h2>Authentication</h2>
+        <div>
+            <input type="text" id="username" placeholder="Username" value="admin">
+            <input type="password" id="password" placeholder="Password" value="admin">
+            <button onclick="login()">Login</button>
+            <button onclick="logout()">Logout</button>
+            <button onclick="checkAuth()">Check Auth</button>
+        </div>
+    </div>
+    
+    <div>
+        <h2>Portfolios</h2>
+        <button onclick="getPortfolios()">Get My Portfolios</button>
+        <button onclick="createTestPortfolio()">Create Test Portfolio</button>
+    </div>
+    
+    <div>
+        <h2>API Test</h2>
+        <button onclick="testApi()">Test API</button>
+    </div>
+    
+    <div>
+        <h2>Response</h2>
+        <pre id="response">No response yet</pre>
+    </div>
+    
+    <script>
+        // Helper function to display response
+        function displayResponse(data) {
+            document.getElementById('response').textContent = 
+                typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        }
+        
+        // Authentication functions
+        async function login() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse(`Error: ${error.message}`);
+            }
+        }
+        
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                displayResponse(`Logout status: ${response.status} ${response.statusText}`);
+            } catch (error) {
+                displayResponse(`Error: ${error.message}`);
+            }
+        }
+        
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/user', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayResponse(data);
+                } else {
+                    displayResponse(`Not authenticated: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                displayResponse(`Error: ${error.message}`);
+            }
+        }
+        
+        // Portfolio functions
+        async function getPortfolios() {
+            try {
+                const response = await fetch('/api/user/portfolios', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayResponse(data);
+                } else {
+                    const text = await response.text();
+                    displayResponse(`Error: ${response.status} ${response.statusText}\n${text}`);
+                }
+            } catch (error) {
+                displayResponse(`Error: ${error.message}`);
+            }
+        }
+        
+        async function createTestPortfolio() {
+            try {
+                const response = await fetch('/api/test/create-portfolio', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayResponse(data);
+                } else {
+                    const text = await response.text();
+                    displayResponse(`Error: ${response.status} ${response.statusText}\n${text}`);
+                }
+            } catch (error) {
+                displayResponse(`Error: ${error.message}`);
+            }
+        }
+        
+        // API test function
+        async function testApi() {
+            try {
+                const response = await fetch('/api/test', {
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse(`Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

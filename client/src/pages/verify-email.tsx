@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api-request";
 import { useToast } from "@/hooks/use-toast";
 
 export default function VerifyEmailPage() {
@@ -31,7 +31,7 @@ export default function VerifyEmailPage() {
 
         setStatus("success");
         setMessage(data.message || "Your email has been verified successfully!");
-        
+
         toast({
           title: "Email Verified",
           description: "Your email has been verified successfully!",
@@ -39,7 +39,7 @@ export default function VerifyEmailPage() {
       } catch (error: any) {
         setStatus("error");
         setMessage(error.message || "Failed to verify your email. The link may be expired or invalid.");
-        
+
         toast({
           title: "Verification Failed",
           description: "Failed to verify your email. The link may be expired or invalid.",

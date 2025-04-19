@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api-request";
 import { Template } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
@@ -197,11 +197,11 @@ export function TemplatesList() {
               Make changes to the template details.
             </DialogDescription>
           </DialogHeader>
-          
+
           {editingTemplate && (
             <TemplateForm template={editingTemplate} />
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={handleDialogClose}>
               Cancel

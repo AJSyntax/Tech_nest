@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api-request";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
 // Password strength criteria
 const passwordCriteria = [
-  { id: "length", label: "At least 8 characters", regex: /.{8,}/ },
+  { id: "length", label: "At least 12 characters", regex: /.{12,}/ },
   { id: "uppercase", label: "At least one uppercase letter", regex: /[A-Z]/ },
   { id: "lowercase", label: "At least one lowercase letter", regex: /[a-z]/ },
   { id: "number", label: "At least one number", regex: /[0-9]/ },
@@ -47,13 +47,13 @@ export default function ResetPasswordPage() {
       acc[criteria.id] = criteria.regex.test(password);
       return acc;
     }, {} as Record<string, boolean>);
-    
+
     setMeetsRequirements(newMeetsRequirements);
-    
+
     // Calculate strength percentage (20% for each criteria met)
     const metCount = Object.values(newMeetsRequirements).filter(Boolean).length;
     setPasswordStrength((metCount / passwordCriteria.length) * 100);
-    
+
     // Check if passwords match
     if (confirmPassword) {
       setPasswordsMatch(password === confirmPassword);
@@ -75,19 +75,19 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form before submission
     if (passwordStrength < 100 || !passwordsMatch) {
       toast({
         title: "Validation Error",
-        description: !passwordsMatch 
-          ? "Passwords do not match" 
+        description: !passwordsMatch
+          ? "Passwords do not match"
           : "Password does not meet all requirements",
         variant: "destructive",
       });
       return;
     }
-    
+
     if (!token) {
       toast({
         title: "Invalid Request",
@@ -96,18 +96,18 @@ export default function ResetPasswordPage() {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const response = await apiRequest("POST", "/api/reset-password", {
         token,
         password,
         confirmPassword,
       });
-      
+
       const data = await response.json();
-      
+
       setResetStatus("success");
       toast({
         title: "Password Reset Successful",
@@ -116,15 +116,15 @@ export default function ResetPasswordPage() {
     } catch (error: any) {
       setResetStatus("error");
       let message = "Failed to reset password";
-      
+
       if (error.response && error.response.data) {
         message = error.response.data.message || message;
       } else if (error.message) {
         message = error.message;
       }
-      
+
       setErrorMessage(message);
-      
+
       toast({
         title: "Password Reset Failed",
         description: message,
@@ -222,7 +222,7 @@ export default function ResetPasswordPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              
+
               {/* Password strength meter */}
               {password && (
                 <div className="mt-2 space-y-2">
@@ -231,7 +231,7 @@ export default function ResetPasswordPage() {
                     <span className="text-xs">{Math.round(passwordStrength)}%</span>
                   </div>
                   <Progress value={passwordStrength} className={getPasswordStrengthColor()} />
-                  
+
                   {/* Password requirements checklist */}
                   <div className="mt-2 space-y-1">
                     {passwordCriteria.map((criteria) => (
@@ -248,7 +248,7 @@ export default function ResetPasswordPage() {
                 </div>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm Password</Label>
               <div className="relative">
@@ -274,7 +274,7 @@ export default function ResetPasswordPage() {
                 <p className="text-xs text-destructive">Passwords do not match</p>
               )}
             </div>
-            
+
             {resetStatus === "error" && (
               <div className="p-3 bg-destructive/10 border border-destructive rounded-md">
                 <p className="text-sm text-destructive">{errorMessage}</p>

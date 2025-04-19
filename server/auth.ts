@@ -6,7 +6,7 @@ import connectSqlite3 from "connect-sqlite3"; // Import connect-sqlite3
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage"; // storage is now SqliteStorage, but we don't need its sessionStore anymore
-import { User as SelectUser, userRegistrationSchema, passwordSchema, otpVerificationSchema } from "@shared/schema";
+import { User as SelectUser, userRegistrationSchema, passwordSchema } from "@shared/schema";
 import nodemailer from "nodemailer";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -44,23 +44,7 @@ export function generateToken(): string {
 
 // Generate a 6-digit OTP code
 export function generateOTP(): string {
-  // Generate a random 6-digit number
   return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-// Check if OTP is valid and not expired
-export function isOTPValid(storedOTP: string | null, storedExpiry: number | null, providedOTP: string): boolean {
-  if (!storedOTP || !storedExpiry) {
-    return false;
-  }
-
-  // Check if OTP has expired
-  if (Date.now() > storedExpiry) {
-    return false;
-  }
-
-  // Check if OTP matches
-  return storedOTP === providedOTP;
 }
 
 // Send verification email
@@ -149,14 +133,21 @@ export function setupAuth(app: Express) {
   // Session middleware
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "technest-session-secret",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: sessionStore as session.Store, // Cast to session.Store to resolve type mismatch
     cookie: {
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    }
+      secure: false, // Set to false for development, even in production since we're not using HTTPS
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for longer sessions
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/' // Ensure cookie is sent for all paths
+    },
+    name: 'technest.sid' // Custom name to avoid conflicts
   };
+
+  // Log session store setup
+  console.log('Session store initialized');
 
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
@@ -192,104 +183,15 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Generate OTP endpoint
-  app.post("/api/generate-otp", async (req, res, next) => {
-    try {
-      const { email } = req.body;
-
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-      }
-
-      // Check if email already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "Email already exists" });
-      }
-
-      // Generate OTP
-      const otpCode = generateOTP();
-      const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes from now
-
-      // Store OTP temporarily (we'll associate it with the user during registration)
-      // We're using email as a key to store the OTP
-      const tempUser = await storage.getUserByEmail(email);
-      if (tempUser) {
-        await storage.updateUser(tempUser.id, {
-          otpCode,
-          otpExpiry
-        });
-      } else {
-        // Create a temporary user entry with just email and OTP
-        await storage.createTempUser(email, otpCode, otpExpiry);
-      }
-
-      // Return the OTP (in a real app, you would send this via email or SMS)
-      res.status(200).json({
-        message: "OTP generated successfully",
-        otpCode, // Only for demo purposes - in production, don't send this back to client
-        expiresIn: "10 minutes"
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Verify OTP endpoint
-  app.post("/api/verify-otp", async (req, res, next) => {
-    try {
-      const { email, otpCode } = req.body;
-
-      if (!email || !otpCode) {
-        return res.status(400).json({ message: "Email and OTP are required" });
-      }
-
-      // Find temp user by email
-      const tempUser = await storage.getUserByEmail(email);
-
-      if (!tempUser) {
-        return res.status(400).json({ message: "Invalid email or OTP" });
-      }
-
-      // Verify OTP
-      if (!isOTPValid(tempUser.otpCode, tempUser.otpExpiry, otpCode)) {
-        return res.status(400).json({ message: "Invalid or expired OTP" });
-      }
-
-      // OTP is valid
-      res.status(200).json({ message: "OTP verified successfully" });
-    } catch (error) {
-      next(error);
-    }
-  });
-
   // Authentication routes
   app.post("/api/register", async (req, res, next) => {
     try {
-      console.log("Registration request body:", JSON.stringify(req.body));
-
       // Validate registration data
       try {
-        // Make sure otpCode is included in the request
-        if (!req.body.otpCode) {
-          console.log("OTP code missing in request");
-          return res.status(400).json({
-            message: "Validation failed",
-            errors: ["OTP verification is required"]
-          });
-        }
-
-        try {
-          userRegistrationSchema.parse(req.body);
-          console.log("Schema validation passed");
-        } catch (zodError) {
-          console.log("Schema validation failed:", zodError);
-          throw zodError;
-        }
+        userRegistrationSchema.parse(req.body);
       } catch (error) {
         if (error instanceof ZodError) {
           const validationError = fromZodError(error);
-          console.log("Validation error details:", validationError.details);
           return res.status(400).json({
             message: "Validation failed",
             errors: validationError.details.map(detail => detail.message)
@@ -306,73 +208,50 @@ export function setupAuth(app: Express) {
 
       // Check if email already exists
       const existingEmail = await storage.getUserByEmail(req.body.email);
-      if (existingEmail && existingEmail.username && existingEmail.username.indexOf('temp_') !== 0) {
+      if (existingEmail) {
         return res.status(400).json({ message: "Email already exists" });
       }
 
-      // Verify OTP if provided
-      if (req.body.otpCode) {
-        // Check if OTP is valid
-        if (!existingEmail || !isOTPValid(existingEmail.otpCode, existingEmail.otpExpiry, req.body.otpCode)) {
-          return res.status(400).json({ message: "Invalid or expired OTP" });
-        }
-      } else {
-        return res.status(400).json({ message: "OTP verification is required" });
-      }
+      // Generate verification token
+      const verificationToken = generateToken();
+      const tokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours from now
 
-      // We don't need verification token since we're using OTP
+      // Generate OTP code
+      const otpCode = generateOTP();
+      const otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes from now
 
       // Hash password and create new user
       const hashedPassword = await hashPassword(req.body.password);
       const hashedSecretAnswer = await hashPassword(req.body.secretAnswer);
 
-      // If we have a temporary user with just email and OTP, update it
-      // Otherwise create a new user
-      let user;
-      if (existingEmail) {
-        user = await storage.updateUser(existingEmail.id, {
-          username: req.body.username,
-          password: hashedPassword,
-          secretQuestion: req.body.secretQuestion,
-          secretAnswer: hashedSecretAnswer,
-          otpCode: null, // Clear OTP after successful verification
-          otpExpiry: null,
-          role: "user"
-        });
+      const user = await storage.createUser({
+        username: req.body.username,
+        email: req.body.email,
+        password: hashedPassword,
+        secretQuestion: req.body.secretQuestion,
+        secretAnswer: hashedSecretAnswer,
+        verificationToken,
+        verificationTokenExpiry: tokenExpiry,
+        role: "user", // Force role to be 'user' for security
+        otpCode,
+        otpExpiry
+      });
 
-        // Update isEmailVerified separately to avoid TypeScript errors
-        await storage.updateUser(existingEmail.id, {
-          isEmailVerified: true // Since we verified with OTP
-        });
-      } else {
-        user = await storage.createUser({
-          username: req.body.username,
-          email: req.body.email,
-          password: hashedPassword,
-          secretQuestion: req.body.secretQuestion,
-          secretAnswer: hashedSecretAnswer,
-          role: "user", // Force role to be 'user' for security
-        });
-
-        // Update isEmailVerified separately
-        if (user) {
-          await storage.updateUser(user.id, {
-            isEmailVerified: true // Since we verified with OTP
-          });
-        }
+      // Send verification email (keeping this for backup verification method)
+      try {
+        await sendVerificationEmail(req.body.email, verificationToken);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        // Continue with registration even if email fails
       }
 
-      // Auto-login the user after registration
-      if (user) {
-        req.login(user, (err) => {
-          if (err) return next(err);
-          // Return user without sensitive data
-          const { password, secretAnswer, verificationToken, ...userWithoutSensitiveData } = user as any;
-          res.status(201).json(userWithoutSensitiveData);
-        });
-      } else {
-        return res.status(500).json({ message: "Failed to create user" });
-      }
+      // Return the user data with OTP code (but without sensitive data)
+      const { password, secretAnswer, verificationToken: vt, ...userWithoutSensitiveData } = user;
+      res.status(201).json({
+        ...userWithoutSensitiveData,
+        otpCode, // Include OTP code in response
+        message: "User registered successfully"
+      });
     } catch (error) {
       next(error);
     }
@@ -470,8 +349,7 @@ export function setupAuth(app: Express) {
       }
 
       // Compare secret answer
-      const isAnswerCorrect = secretAnswer && user.secretAnswer ?
-        await comparePasswords(secretAnswer, user.secretAnswer) : false;
+      const isAnswerCorrect = await comparePasswords(secretAnswer, user.secretAnswer);
 
       if (!isAnswerCorrect) {
         return res.status(400).json({ message: "Incorrect secret answer" });
@@ -544,33 +422,174 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
+    console.log('Login attempt for username:', req.body.username);
+
     passport.authenticate("local", (err: Error | null, user: Express.User | false, info: { message: string } | undefined) => {
-      if (err) return next(err);
+      if (err) {
+        console.error('Login error:', err);
+        return next(err);
+      }
+
       if (!user) {
+        console.log('Authentication failed:', info?.message);
         return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
+
       req.login(user, (err: Error | null) => {
-        if (err) return next(err);
-        res.json(user);
+        if (err) {
+          console.error('Session login error:', err);
+          return next(err);
+        }
+
+        console.log('User logged in successfully. Session ID:', req.sessionID);
+        console.log('Session cookie set:', !!req.session);
+
+        // Save the session explicitly to ensure it's stored
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save error:', err);
+            return next(err);
+          }
+
+          // Return user data without sensitive information
+          const { password, secretAnswer, ...safeUser } = user as any;
+          res.json(safeUser);
+        });
       });
     })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
+    console.log('Logout request received. Session ID:', req.sessionID);
+
+    if (!req.isAuthenticated()) {
+      console.log('User already logged out');
+      return res.sendStatus(200);
+    }
+
+    const userId = req.user?.id;
+    console.log('Logging out user ID:', userId);
+
     req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
+      if (err) {
+        console.error('Logout error:', err);
+        return next(err);
+      }
+
+      // Destroy the session completely
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destroy error:', err);
+          return next(err);
+        }
+
+        console.log('User logged out and session destroyed');
+        res.clearCookie('technest.sid');
+        res.sendStatus(200);
+      });
     });
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
+    console.log('GET /api/user - Auth status:', req.isAuthenticated());
+    console.log('Session ID:', req.sessionID);
+
+    if (!req.isAuthenticated() || !req.user) {
+      console.log('User not authenticated');
       return res.status(401).json({ message: "Not authenticated" });
     }
-    res.json(req.user);
+
+    console.log('Returning user data for ID:', req.user.id);
+
+    // Return user data without sensitive information
+    const { password, secretAnswer, ...safeUser } = req.user as any;
+    res.json(safeUser);
   });
 
   // Get security question for a user by email (for password reset)
+  // Generate new OTP code
+  app.post("/api/generate-otp", async (req, res, next) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Generate new OTP code
+      const otpCode = generateOTP();
+      const otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes from now
+
+      // Update user with new OTP
+      await storage.updateUser(user.id, {
+        otpCode,
+        otpExpiry
+      });
+
+      return res.status(200).json({
+        message: "OTP generated successfully",
+        otpCode
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Verify OTP code
+  app.post("/api/verify-otp", async (req, res, next) => {
+    try {
+      const { email, otpCode } = req.body;
+
+      if (!email || !otpCode) {
+        return res.status(400).json({ message: "Email and OTP code are required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if OTP matches
+      if (user.otpCode !== otpCode) {
+        return res.status(400).json({ message: "Invalid OTP code" });
+      }
+
+      // Check if OTP is expired
+      if (!user.otpExpiry || user.otpExpiry < Date.now()) {
+        return res.status(400).json({ message: "OTP code has expired" });
+      }
+
+      // Mark email as verified and clear OTP
+      await storage.updateUser(user.id, {
+        isEmailVerified: true,
+        otpCode: null,
+        otpExpiry: null
+      });
+
+      // Auto-login the user after verification
+      req.login(user, (err) => {
+        if (err) return next(err);
+        // Return user without sensitive data
+        const { password, secretAnswer, verificationToken, ...userWithoutSensitiveData } = user;
+        res.status(200).json({
+          message: "Email verified successfully",
+          user: userWithoutSensitiveData
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get("/api/user-question", async (req, res, next) => {
     try {
       const { email } = req.query;

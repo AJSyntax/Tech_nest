@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Code, LogOut, Loader2 } from "lucide-react";
+import { Code, LogOut, Loader2, ShoppingCart } from "lucide-react";
 import MobileNav from "./MobileNav";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ const Header = () => {
               <span className="ml-2 text-xl font-semibold">Technest</span>
             </Link>
           </div>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
             <Link href="/templates" className={`text-slate-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium ${location === '/templates' ? 'text-primary-600' : ''}`}>
@@ -46,7 +46,7 @@ const Header = () => {
               </Link>
             )}
           </nav>
-          
+
           <div className="hidden md:flex items-center space-x-4">
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-primary-600" />
@@ -68,15 +68,28 @@ const Header = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {user.role === "admin" && (
-                      <Link href="/admin">
-                        <DropdownMenuItem>
-                          Admin Dashboard
-                        </DropdownMenuItem>
-                      </Link>
+                      <>
+                        <Link href="/admin">
+                          <DropdownMenuItem>
+                            Admin Dashboard
+                          </DropdownMenuItem>
+                        </Link>
+                        <Link href="/admin/template-purchases">
+                          <DropdownMenuItem>
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            Purchase Requests
+                          </DropdownMenuItem>
+                        </Link>
+                      </>
                     )}
                     <Link href="/my-portfolios">
                       <DropdownMenuItem>
                         My Portfolios
+                      </DropdownMenuItem>
+                    </Link>
+                    <Link href="/my-purchases">
+                      <DropdownMenuItem>
+                        My Purchases
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuItem onClick={handleLogout} disabled={logoutMutation.isPending}>
@@ -101,10 +114,10 @@ const Header = () => {
               </Link>
             )}
           </div>
-          
+
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
-            <button 
+            <button
               onClick={toggleMobileMenu}
               className="text-slate-600 hover:text-primary-600 focus:outline-none"
               aria-label="Toggle mobile menu"
@@ -116,7 +129,7 @@ const Header = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Mobile Menu */}
       <MobileNav isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} user={user} onLogout={handleLogout} />
     </header>

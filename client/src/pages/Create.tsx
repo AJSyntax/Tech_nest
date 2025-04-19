@@ -7,17 +7,19 @@ import PersonalInfoForm from "@/components/builder/PersonalInfoForm";
 import SkillsForm from "@/components/builder/SkillsForm";
 import ProjectsForm from "@/components/builder/ProjectsForm";
 import EducationForm from "@/components/builder/EducationForm";
-import ColorSchemeForm from "@/components/builder/ColorSchemeForm"; // Import the correct component
+import ColorSchemeForm from "@/components/builder/ColorSchemeForm";
 import TemplateSelectionModal from "@/components/modals/TemplateSelectionModal";
 import ExportModal from "@/components/modals/ExportModal";
 import { FormStep } from "@/types/portfolio";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Template } from "@shared/schema";
 import { useSearch } from "wouter";
-// Remove unused imports related to global buttons
-// import { Button } from "@/components/ui/button";
-// import { ChevronLeft, ChevronRight, Save, Upload } from "lucide-react";
-import { useToast } from "@/hooks/use-toast"; // Restore this import
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/api-request";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define props for the Create component
 interface CreateProps {
@@ -47,6 +49,13 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const templateIdParam = searchParams.get("template");
+  const trialParam = searchParams.get("trial");
+
+  // State for premium template handling
+  const [isPremiumTemplate, setIsPremiumTemplate] = useState(false);
+  const [isPurchased, setIsPurchased] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
+  const { user } = useAuth();
 
   const { data: templates } = useQuery<Template[]>({
     queryKey: ['/api/templates'],
@@ -58,24 +67,96 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
       const selectedTemplate = templates.find(t => t.id.toString() === templateIdParam);
       if (selectedTemplate) {
         updatePortfolio({ templateId: selectedTemplate.id.toString() });
+
+        // Check if it's a premium template
+        if (selectedTemplate.isPremium) {
+          setIsPremiumTemplate(true);
+
+          // Check if this is a trial
+          if (trialParam === 'true') {
+            setIsTrial(true);
+          }
+        }
       }
     }
-  }, [portfolioId, templateIdParam, templates, updatePortfolio]);
+  }, [portfolioId, templateIdParam, templates, updatePortfolio, trialParam]);
+
+  // Check if user has purchased this template
+  const { data: userPurchases = [] } = useQuery<any[]>({
+    queryKey: ["/api/user/template-purchases"],
+    enabled: !!user && isPremiumTemplate, // Only run if user is logged in and template is premium
+  });
+
+  // Update isPurchased state when userPurchases data changes
+  useEffect(() => {
+    if (userPurchases.length > 0 && templateIdParam) {
+      const templateId = parseInt(templateIdParam);
+      const purchase = userPurchases.find(
+        (p) => p.templateId === templateId && p.status === "approved"
+      );
+      setIsPurchased(!!purchase);
+    }
+  }, [userPurchases, templateIdParam]);
+
+  // Mutation for creating a template purchase request
+  const purchaseMutation = useMutation({
+    mutationFn: async (templateId: number) => {
+      if (!user?.id) {
+        throw new Error("You must be logged in to purchase templates");
+      }
+
+      console.log('Submitting purchase request:', {
+        userId: user.id,
+        templateId,
+        portfolioId: portfolioId ? parseInt(portfolioId) : undefined
+      });
+
+      return apiRequest('POST', '/api/template-purchases', {
+        userId: user.id,
+        templateId,
+        portfolioId: portfolioId ? parseInt(portfolioId) : undefined
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Purchase Request Submitted",
+        description: "Your purchase request has been submitted for admin approval."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Purchase Request Failed",
+        description: error.message || "Failed to submit purchase request",
+        variant: "destructive"
+      });
+    }
+  });
 
   // Define handleSave here, to be passed ONLY to ColorSchemeForm
   const handleSave = async () => {
+    // Check if a template has been selected
+    if (!portfolio.templateId) {
+      toast({
+        title: "No Template Selected",
+        description: "Please select a template before saving your portfolio.",
+        variant: "destructive"
+      });
+      openTemplateModal();
+      return;
+    }
+
     const savedId = await savePortfolio(portfolioId);
     // Add toast notification here
-     if (savedId) {
-       toast({
-         title: "Progress Saved",
-         description: "Your portfolio draft has been saved.",
-       });
-       // Optionally update the URL if creating a new portfolio and it now has an ID
-       if (!portfolioId && savedId) {
-         setLocation(`/edit/${savedId}`, { replace: true });
-       }
-     }
+    if (savedId) {
+      toast({
+        title: "Progress Saved",
+        description: "Your portfolio draft has been saved.",
+      });
+      // Optionally update the URL if creating a new portfolio and it now has an ID
+      if (!portfolioId && savedId) {
+        setLocation(`/edit/${savedId}`, { replace: true });
+      }
+    }
   };
 
 
@@ -144,6 +225,44 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
 
               {/* Form Content */}
               <div className="p-6">
+                {/* Premium Template Alert */}
+                {isPremiumTemplate && !isPurchased && (
+                  <Alert className="mb-4" variant={isTrial ? "default" : "destructive"}>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>{isTrial ? "Trial Mode" : "Premium Template"}</AlertTitle>
+                    <AlertDescription>
+                      {isTrial ? (
+                        "You are using this premium template in trial mode. You won't be able to export your portfolio until you purchase this template."
+                      ) : (
+                        "This is a premium template. You need to purchase it before you can use it."
+                      )}
+                      {user ? (
+                        <Button
+                          className="mt-2"
+                          size="sm"
+                          onClick={() => {
+                            const templateId = parseInt(portfolio.templateId);
+                            console.log('Purchasing template with ID:', templateId, 'Original:', portfolio.templateId);
+                            purchaseMutation.mutate(templateId);
+                          }}
+                          disabled={purchaseMutation.isPending}
+                        >
+                          <ShoppingCart className="mr-2 h-4 w-4" />
+                          {purchaseMutation.isPending ? "Processing..." : "Purchase Template"}
+                        </Button>
+                      ) : (
+                        <Button
+                          className="mt-2"
+                          size="sm"
+                          onClick={() => setLocation("/login")}
+                        >
+                          Login to Purchase
+                        </Button>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {/* Render the component for the current step */}
                 {currentStepData.component}
               </div>
@@ -156,6 +275,8 @@ const Create: React.FC<CreateProps> = ({ portfolioId }) => { // Accept portfolio
             <LivePreview
               portfolio={portfolio}
               onSelectTemplate={openTemplateModal}
+              isPremiumTemplate={isPremiumTemplate}
+              isPurchased={isPurchased}
             />
           </div>
         </div>

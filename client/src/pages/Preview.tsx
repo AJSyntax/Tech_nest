@@ -25,10 +25,10 @@ const Preview = () => {
   const [previewSrcDoc, setPreviewSrcDoc] = useState<string | null>(null);
 
   // Use PortfolioResponse for the query result type
-  const { 
-    data: portfolio, 
-    isLoading: isLoadingPortfolio, 
-    isError: isPortfolioError 
+  const {
+    data: portfolio,
+    isLoading: isLoadingPortfolio,
+    isError: isPortfolioError
   } = useQuery<PortfolioResponse>({
     queryKey: [`/api/portfolios/${id}`],
     enabled: !!id,
@@ -57,7 +57,7 @@ const Preview = () => {
   const selectedTemplate = useMemo(() => {
     if (!portfolio || !templates) return undefined;
     // portfolio.templateId is already a string, t.id is likely a number
-    return templates.find(t => t.id.toString() === portfolio.templateId); 
+    return templates.find(t => t.id.toString() === portfolio.templateId);
   }, [portfolio, templates]);
 
   // Generate preview content when portfolio and template data are ready
@@ -128,7 +128,7 @@ const Preview = () => {
 
   const handleExport = async () => {
     // Use the full portfolio response data for export
-    if (!portfolio) return; 
+    if (!portfolio) return;
 
     // Construct PortfolioFormData for the zip generator
      const portfolioDataForExport: PortfolioFormData = {
@@ -141,12 +141,12 @@ const Preview = () => {
         colorScheme: portfolio.colorScheme,
         isPublished: portfolio.isPublished,
       };
-    
+
     try {
       setIsExporting(true);
       // Pass the correctly typed data to the zip generator
-      await generatePortfolioZip(portfolioDataForExport, selectedTemplate?.name || 'Custom'); 
-      
+      await generatePortfolioZip(portfolioDataForExport, selectedTemplate?.name || 'Custom');
+
       toast({
         title: "Success!",
         description: "Your portfolio has been downloaded."
@@ -180,9 +180,9 @@ const Preview = () => {
       <div className="container-custom">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setLocation("/create")}
               className="mb-2"
             >
@@ -197,7 +197,7 @@ const Preview = () => {
               )}
             </h1>
           </div>
-          
+
           <div className="flex mt-4 md:mt-0">
             <div className="flex bg-white border rounded-md p-1 mr-4">
               {(['mobile', 'tablet', 'desktop'] as const).map((d) => (
@@ -213,9 +213,9 @@ const Preview = () => {
                 </Button>
               ))}
             </div>
-            
-            <Button 
-              onClick={handleExport} 
+
+            <Button
+              onClick={handleExport}
               disabled={isExporting || !portfolio}
             >
               <Download className="h-4 w-4 mr-2" />
@@ -223,7 +223,7 @@ const Preview = () => {
             </Button>
           </div>
         </div>
-        
+
         {isLoadingPortfolio ? (
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex justify-center">
           <Skeleton className="w-full max-w-3xl h-[600px]" />

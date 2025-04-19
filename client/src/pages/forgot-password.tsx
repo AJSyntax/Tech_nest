@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/api-request";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -23,10 +23,10 @@ export default function ForgotPasswordPage() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       await apiRequest("POST", "/api/forgot-password", { email });
-      
+
       setEmailSent(true);
       toast({
         title: "Email Sent",
@@ -45,11 +45,11 @@ export default function ForgotPasswordPage() {
 
   const handleCheckEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const response = await apiRequest("GET", `/api/user-question?email=${encodeURIComponent(secretEmail)}`);
       const data = await response.json();
-      
+
       if (data.secretQuestion) {
         setSecretQuestion(data.secretQuestion);
         toast({
@@ -75,15 +75,15 @@ export default function ForgotPasswordPage() {
   const handleSecretSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSecretSubmitting(true);
-    
+
     try {
-      const response = await apiRequest("POST", "/api/verify-secret-answer", { 
-        email: secretEmail, 
-        secretAnswer 
+      const response = await apiRequest("POST", "/api/verify-secret-answer", {
+        email: secretEmail,
+        secretAnswer
       });
-      
+
       const data = await response.json();
-      
+
       if (data.resetToken) {
         setResetToken(data.resetToken);
         toast({
@@ -111,13 +111,13 @@ export default function ForgotPasswordPage() {
             Reset your password using email or security question
           </CardDescription>
         </CardHeader>
-        
+
         <Tabs defaultValue="email">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="email">Email Reset</TabsTrigger>
             <TabsTrigger value="security">Security Question</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="email">
             {!emailSent ? (
               <form onSubmit={handleEmailSubmit}>
@@ -166,7 +166,7 @@ export default function ForgotPasswordPage() {
               </CardContent>
             )}
           </TabsContent>
-          
+
           <TabsContent value="security">
             {resetToken ? (
               <CardContent className="pt-6 pb-6">
@@ -201,9 +201,9 @@ export default function ForgotPasswordPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setSecretQuestion(null)}
                   >
                     Back

@@ -1,35 +1,58 @@
 import { useState } from "react";
-import { 
-  PortfolioFormData, 
-  DevicePreviewType 
+import {
+  PortfolioFormData,
+  DevicePreviewType
 } from "@/types/portfolio";
 import { Button } from "@/components/ui/button";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useQuery } from "@tanstack/react-query";
 import { Template } from "@shared/schema";
-import { 
-  Smartphone, 
-  Tablet, 
-  Monitor, 
-  Sun, 
-  Moon 
+import {
+  Smartphone,
+  Tablet,
+  Monitor,
+  Sun,
+  Moon,
+  Lock,
+  Download
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LivePreviewProps {
   portfolio: PortfolioFormData;
   onSelectTemplate: () => void;
+  isPremiumTemplate?: boolean;
+  isPurchased?: boolean;
 }
 
-const LivePreview: React.FC<LivePreviewProps> = ({ portfolio, onSelectTemplate }) => {
+const LivePreview: React.FC<LivePreviewProps> = ({
+  portfolio,
+  onSelectTemplate,
+  isPremiumTemplate: propIsPremium,
+  isPurchased: propIsPurchased
+}) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { device, setDevice } = usePortfolio();
+  const { device, setDevice, openExportModal } = usePortfolio();
+  const { user } = useAuth();
 
   const { data: templates, isLoading } = useQuery<Template[]>({
     queryKey: ['/api/templates'],
   });
 
   const selectedTemplate = templates?.find(t => t.id.toString() === portfolio.templateId);
+
+  // Check if user has purchased this template
+  const { data: userPurchases = [] } = useQuery<any[]>({
+    queryKey: ["/api/user/template-purchases"],
+    enabled: !!user && !!portfolio.templateId, // Only run if user is logged in and template is selected
+  });
+
+  // Determine if the template is premium and purchased
+  const isPremiumTemplate = propIsPremium || (selectedTemplate?.isPremium ?? false);
+  const isPurchased = propIsPurchased || userPurchases.some(
+    (p) => p.templateId === parseInt(portfolio.templateId) && p.status === "approved"
+  );
 
   const devices: DevicePreviewType[] = [
     {
@@ -58,15 +81,30 @@ const LivePreview: React.FC<LivePreviewProps> = ({ portfolio, onSelectTemplate }
       <div className="border-b border-slate-200 p-4">
         <div className="flex justify-between items-center">
           <h2 className="text-lg font-medium text-slate-900">Live Preview</h2>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onSelectTemplate}
-          >
-            Change Template
-          </Button>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSelectTemplate}
+            >
+              Change Template
+            </Button>
+            <Button
+              size="sm"
+              onClick={openExportModal}
+              disabled={isPremiumTemplate && !isPurchased}
+              title={isPremiumTemplate && !isPurchased ? "Purchase this template to export" : "Export"}
+            >
+              {isPremiumTemplate && !isPurchased ? (
+                <Lock className="mr-2 h-4 w-4" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {isPremiumTemplate && !isPurchased ? "Locked" : "Export"}
+            </Button>
+          </div>
         </div>
-        
+
         <div className="mt-2 flex space-x-2">
           <Button
             variant={isDarkMode ? "outline" : "default"}
@@ -105,27 +143,33 @@ const LivePreview: React.FC<LivePreviewProps> = ({ portfolio, onSelectTemplate }
             <Skeleton className="w-full h-96" />
           </div>
         ) : (
-          <div 
-            className={`bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden mx-auto ${isDarkMode ? 'bg-slate-900 text-white' : ''}`} 
+          <div
+            className={`bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden mx-auto ${isDarkMode ? 'bg-slate-900 text-white' : ''}`}
             style={{ maxWidth: device.width }}
           >
             <div style={{ height: "480px" }} className="overflow-auto">
               {!selectedTemplate ? (
                 <div className="p-6 flex flex-col items-center justify-center h-full">
                   <p className="text-lg font-medium text-center mb-4">
-                    Select a template to see a preview
+                    Please select a template to continue
                   </p>
-                  <Button onClick={onSelectTemplate}>Choose Template</Button>
+                  <p className="text-sm text-slate-500 text-center mb-6">
+                    You need to choose a template before you can create your portfolio.
+                    We have both free and premium options available.
+                  </p>
+                  <Button onClick={onSelectTemplate} size="lg">
+                    Choose a Template
+                  </Button>
                 </div>
               ) : (
                 <>
                   <header className={`p-6 ${isDarkMode ? 'bg-primary-900' : 'bg-primary-600'} text-white`}>
                     <div className="flex items-center">
                       {portfolio.personalInfo.profilePhotoUrl ? (
-                        <img 
-                          src={portfolio.personalInfo.profilePhotoUrl} 
-                          alt={`${portfolio.personalInfo.firstName} ${portfolio.personalInfo.lastName}`} 
-                          className="w-20 h-20 rounded-full border-4 border-white object-cover" 
+                        <img
+                          src={portfolio.personalInfo.profilePhotoUrl}
+                          alt={`${portfolio.personalInfo.firstName} ${portfolio.personalInfo.lastName}`}
+                          className="w-20 h-20 rounded-full border-4 border-white object-cover"
                         />
                       ) : (
                         <div className="w-20 h-20 rounded-full border-4 border-white bg-slate-300 flex items-center justify-center text-slate-600">
@@ -143,7 +187,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ portfolio, onSelectTemplate }
                       </div>
                     </div>
                   </header>
-                  
+
                   <nav className={`${isDarkMode ? 'bg-primary-800' : 'bg-primary-700'} text-white px-6 py-2`}>
                     <ul className="flex text-sm">
                       <li className="mr-4"><a href="#about" className="text-white hover:text-primary-200">About</a></li>
@@ -152,14 +196,14 @@ const LivePreview: React.FC<LivePreviewProps> = ({ portfolio, onSelectTemplate }
                       <li><a href="#contact" className="text-white hover:text-primary-200">Contact</a></li>
                     </ul>
                   </nav>
-                  
+
                   <section id="about" className={`p-6 ${isDarkMode ? 'text-slate-300' : ''}`}>
                     <h2 className="text-xl font-semibold mb-4">About Me</h2>
                     <p className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>
                       {portfolio.personalInfo.about || 'Your bio will appear here. Add some information about yourself, your skills, and what you\'re passionate about.'}
                     </p>
                   </section>
-                  
+
                   <section id="contact" className={`p-6 ${isDarkMode ? 'bg-slate-800' : 'bg-slate-50'}`}>
                     <h2 className="text-xl font-semibold mb-4">Contact</h2>
                     <div className="space-y-2">
@@ -182,11 +226,11 @@ const LivePreview: React.FC<LivePreviewProps> = ({ portfolio, onSelectTemplate }
                       )}
                       <div className="flex space-x-4 mt-4">
                         {portfolio.personalInfo.socialLinks?.map((link, index) => (
-                          <a 
-                            key={index} 
-                            href={link.url} 
+                          <a
+                            key={index}
+                            href={link.url}
                             className={`${isDarkMode ? 'text-primary-400 hover:text-primary-300' : 'text-primary-600 hover:text-primary-800'}`}
-                            target="_blank" 
+                            target="_blank"
                             rel="noopener noreferrer"
                           >
                             <span>{link.platform}</span>

@@ -1,9 +1,30 @@
-import { db } from './db';
+import { db } from '../db';
 import { templates } from '@shared/schema';
-import { storage } from './storage'; // To potentially get admin user ID
+import { storage } from '../storage';
 
-// Basic HTML/CSS for a default template
-const defaultHtml = `
+async function resetTemplates() {
+  console.log('Resetting templates...');
+
+  try {
+    // Delete all existing templates
+    await db.delete(templates).run();
+    console.log('All templates deleted.');
+
+    // Find the admin user to associate the template with
+    let adminUserId: number | undefined;
+    try {
+      const adminUser = await storage.getUserByUsername('admin');
+      if (adminUser) {
+        adminUserId = adminUser.id;
+      } else {
+        console.warn("Admin user 'admin' not found. Templates will be created without an owner.");
+      }
+    } catch (error) {
+      console.error("Error fetching admin user:", error);
+    }
+
+    // Basic HTML/CSS for templates
+    const defaultHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,7 +75,7 @@ const defaultHtml = `
 </html>
 `;
 
-const defaultCss = `
+    const defaultCss = `
 body {
     font-family: sans-serif;
     line-height: 1.6;
@@ -115,78 +136,50 @@ footer {
 }
 `;
 
-async function seedDatabase() {
-  console.log('Checking templates...');
+    // Define the free template data
+    const freeTemplateData = {
+      name: 'Minimalist',
+      description: 'A clean and simple template focusing on content. Free for all users.',
+      thumbnailUrl: '/thumbnails/minimalist.png',
+      isPremium: false,
+      price: 0,
+      category: 'General',
+      htmlContent: defaultHtml,
+      cssContent: defaultCss,
+      jsContent: '',
+      createdBy: adminUserId,
+    };
 
-  try {
-    // Delete all existing templates
-    console.log('Removing existing templates...');
-    await db.delete(templates).run();
-    console.log('All templates deleted.');
-  } catch (error) {
-    console.log('Error deleting templates, they may not exist yet:', error);
-  }
+    // Define the premium template data
+    const premiumTemplateData = {
+      name: 'Professional',
+      description: 'A premium template with advanced features and modern design. Requires purchase.',
+      thumbnailUrl: '/thumbnails/professional.png',
+      isPremium: true,
+      price: 1999, // $19.99
+      category: 'Professional',
+      htmlContent: defaultHtml,
+      cssContent: defaultCss.replace('sans-serif', '"Roboto", "Helvetica Neue", sans-serif'),
+      jsContent: '// Add some interactive features here',
+      createdBy: adminUserId,
+    };
 
-  console.log('No templates found. Seeding default template...');
-
-  // Find the admin user to associate the template with (optional, but good practice)
-  let adminUserId: number | undefined;
-  try {
-    const adminUser = await storage.getUserByUsername('admin');
-    if (adminUser) {
-      adminUserId = adminUser.id;
-    } else {
-      console.warn("Admin user 'admin' not found. Template will be created without an owner.");
-    }
-  } catch (error) {
-    console.error("Error fetching admin user:", error);
-    console.warn("Proceeding to create template without an owner.");
-  }
-
-  // Define the free template data
-  const freeTemplateData = {
-    name: 'Minimalist',
-    description: 'A clean and simple template focusing on content. Free for all users.',
-    thumbnailUrl: '/thumbnails/minimalist.png', // Placeholder path
-    isPremium: false,
-    price: 0,
-    category: 'General',
-    htmlContent: defaultHtml,
-    cssContent: defaultCss,
-    jsContent: '', // No JS for this simple template
-    createdBy: adminUserId, // Link to admin if found
-  };
-
-  // Define the premium template data
-  const premiumTemplateData = {
-    name: 'Professional',
-    description: 'A premium template with advanced features and modern design. Requires purchase.',
-    thumbnailUrl: '/thumbnails/professional.png', // Placeholder path
-    isPremium: true,
-    price: 1999, // $19.99
-    category: 'Professional',
-    htmlContent: defaultHtml, // Using same HTML for demo purposes
-    cssContent: defaultCss.replace('sans-serif', '"Roboto", "Helvetica Neue", sans-serif'), // Slightly modified CSS
-    jsContent: '// Add some interactive features here',
-    createdBy: adminUserId, // Link to admin if found
-  };
-
-  try {
-    // Insert both templates
+    // Insert the two templates
     await db.insert(templates).values(freeTemplateData).run();
     await db.insert(templates).values(premiumTemplateData).run();
-    console.log('Templates seeded successfully!');
+
+    console.log('Templates reset successfully with one free and one premium template.');
   } catch (error) {
-    console.error('Error seeding templates:', error);
+    console.error('Error resetting templates:', error);
   }
 }
 
-seedDatabase()
+resetTemplates()
   .then(() => {
-    console.log('Seeding process finished.');
+    console.log('Reset process completed.');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Seeding process failed:', error);
+    console.error('Reset process failed:', error);
     process.exit(1);
   });

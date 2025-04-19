@@ -5,7 +5,8 @@ import {
   UseMutationResult,
 } from "@tanstack/react-query";
 import { User } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { getQueryFn, queryClient } from "../lib/queryClient";
+import { apiRequest } from "../lib/api-request";
 import { useToast } from "@/hooks/use-toast";
 
 type AuthContextType = {
@@ -14,7 +15,9 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, RegisterData>;
+  registerMutation: UseMutationResult<any, Error, RegisterData>;
+  verifyOtpMutation: UseMutationResult<any, Error, VerifyOtpData>;
+  generateOtpMutation: UseMutationResult<any, Error, { email: string }>;
 };
 
 type LoginData = {
@@ -29,7 +32,11 @@ type RegisterData = {
   confirmPassword?: string; // Optional in the type since we don't send it to the server
   secretQuestion: string;
   secretAnswer: string;
-  otpCode?: string; // OTP code for email verification
+};
+
+type VerifyOtpData = {
+  email: string;
+  otpCode: string;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -70,17 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: RegisterData) => {
       // Remove confirmPassword as it's not needed on the server
       const { confirmPassword, ...dataToSend } = credentials;
-      console.log("Sending registration data:", dataToSend);
       const res = await apiRequest("POST", "/api/register", dataToSend);
-      const responseData = await res.json();
-      console.log("Registration response:", responseData);
-      return responseData;
+      return await res.json();
     },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: (data) => {
       toast({
         title: "Registration successful",
-        description: `Welcome, ${user.username}! Please check your email to verify your account.`,
+        description: data.message || "Account created successfully",
       });
     },
     onError: (error: any) => {
@@ -99,6 +102,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({
         title: "Registration failed",
         description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async (data: VerifyOtpData) => {
+      const res = await apiRequest("POST", "/api/verify-otp", data);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/user"], data.user);
+      toast({
+        title: "Email verified",
+        description: `Welcome, ${data.user.username}! Your account has been created successfully.`,
+      });
+    },
+    onError: (error: any) => {
+      let errorMessage = "OTP verification failed";
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast({
+        title: "Verification failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generateOtpMutation = useMutation({
+    mutationFn: async (data: { email: string }) => {
+      const res = await apiRequest("POST", "/api/generate-otp", data);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "OTP sent",
+        description: "A new OTP code has been generated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to generate OTP",
+        description: error.message || "An error occurred while generating OTP code.",
         variant: "destructive",
       });
     },
@@ -132,6 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        verifyOtpMutation,
+        generateOtpMutation,
       }}
     >
       {children}

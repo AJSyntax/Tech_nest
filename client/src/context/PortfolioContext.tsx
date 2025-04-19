@@ -8,7 +8,7 @@ import { personalInfoSchema, skillSchema, projectSchema, educationSchema, colorS
 import { useToast } from "@/hooks/use-toast";
 import { ZodError } from "zod"; // Import ZodError
 import { fromZodError } from "zod-validation-error"; // Import formatter
-import { apiRequest } from "@/lib/queryClient"; // Import apiRequest helper
+import { apiRequest } from "@/lib/api-request"; // Import apiRequest helper
 
 // Define structure for validation result
 interface ValidationResult {
@@ -204,11 +204,17 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
       const isUpdating = !!id;
       const url = isUpdating ? `/api/portfolios/${id}` : "/api/portfolios";
       const method = isUpdating ? "PUT" : "POST";
+
+      console.log(`${method} request to ${url} with data:`, data);
+      console.log('templateId type:', typeof data.templateId, 'value:', data.templateId);
+
       // Use apiRequest which handles non-OK responses by throwing an error
       const response = await apiRequest(method, url, data);
-      return response.json();
+      const result = await response.json();
+      console.log('Response:', result);
+      return result;
     },
-    onSuccess: (savedPortfolio, { id }) => {
+    onSuccess: (_, { id }) => {
       const isUpdating = !!id;
       toast({
         title: "Success!",
@@ -223,13 +229,25 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
       // DO NOT clear local storage draft here - allow users to save progress
       // localStorage.removeItem("technest_portfolio_draft");
     },
-    onError: (error: Error, { id }) => {
+    onError: (error: any, { id }) => {
       const isUpdating = !!id;
-      toast({
-        title: "Error",
-        description: `Failed to ${isUpdating ? 'update' : 'save'} portfolio: ${error.message}`,
-        variant: "destructive",
-      });
+
+      // Check if this is a template not found error
+      if (error.status === 404 && error.data?.message === "Template not found") {
+        toast({
+          title: "Template Not Found",
+          description: error.data?.details || "Please select a valid template before saving your portfolio.",
+          variant: "destructive",
+        });
+        // Open template selection modal to help user fix the issue
+        openTemplateModal();
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to ${isUpdating ? 'update' : 'save'} portfolio: ${error.message || 'Unknown error'}`,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -259,7 +277,17 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children, 
 
     // Call the mutation (Re-introducing)
     try {
-      const savedPortfolio = await savePortfolioMutation.mutateAsync({ id, data: portfolio });
+      // Create a copy of the portfolio data to ensure we don't modify the original state
+      const portfolioData = { ...portfolio };
+
+      // Ensure templateId is a string (server expects string)
+      if (portfolioData.templateId) {
+        portfolioData.templateId = String(portfolioData.templateId);
+      }
+
+      console.log('Saving portfolio with data:', portfolioData);
+
+      const savedPortfolio = await savePortfolioMutation.mutateAsync({ id, data: portfolioData });
       return savedPortfolio.id; // Return the ID from the mutation result
     } catch (error) {
       // Error handling is done within the mutation's onError callback

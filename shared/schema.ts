@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, blob, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -30,10 +30,13 @@ export const portfolios = sqliteTable("portfolios", {
   skills: blob("skills", { mode: "json" }).notNull(),
   projects: blob("projects", { mode: "json" }).notNull(),
   education: blob("education", { mode: "json" }).notNull(),
+  experience: blob("experience", { mode: "json" }).default(sql`'[]'`),
   colorScheme: blob("color_scheme", { mode: "json" }).notNull(),
   createdAt: integer("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
+  isPremiumTemplate: integer("is_premium_template", { mode: "boolean" }).notNull().default(false),
+  isPurchased: integer("is_purchased", { mode: "boolean" }).notNull().default(false),
 });
 
 export const templates = sqliteTable("templates", {
@@ -50,6 +53,18 @@ export const templates = sqliteTable("templates", {
   jsContent: text("js_content"), // JavaScript content for the template
   createdBy: integer("created_by").references(() => users.id), // Admin who created the template
   createdAt: integer("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Table for template purchase requests
+export const templatePurchases = sqliteTable("template_purchases", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => users.id),
+  templateId: integer("template_id").notNull().references(() => templates.id),
+  portfolioId: integer("portfolio_id").references(() => portfolios.id),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  requestedAt: integer("requested_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  approvedAt: integer("approved_at"),
+  approvedBy: integer("approved_by").references(() => users.id),
 });
 
 export const personalInfoSchema = z.object({
@@ -91,6 +106,14 @@ export const educationSchema = z.object({
   description: z.string().optional()
 });
 
+export const experienceSchema = z.object({
+  company: z.string().min(1, "Company name is required"),
+  position: z.string().min(1, "Position is required"),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  description: z.string().optional()
+});
+
 export const colorSchemeSchema = z.object({
   primary: z.string(),
   secondary: z.string(),
@@ -106,13 +129,14 @@ export const portfolioSchema = z.object({
   skills: z.array(skillSchema),
   projects: z.array(projectSchema),
   education: z.array(educationSchema),
+  experience: z.array(experienceSchema).optional().default([]),
   colorScheme: colorSchemeSchema,
   isPublished: z.boolean().default(false)
 });
 
 // Password complexity schema
 export const passwordSchema = z.string()
-  .min(8, "Password must be at least 8 characters")
+  .min(12, "Password must be at least 12 characters")
   .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
   .regex(/[a-z]/, "Password must contain at least one lowercase letter")
   .regex(/[0-9]/, "Password must contain at least one number")
@@ -123,19 +147,8 @@ export const userRegistrationSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   password: passwordSchema,
-  confirmPassword: z.string().optional(), // Make optional since we don't send it to the server
   secretQuestion: z.string().min(1, "Secret question is required"),
   secretAnswer: z.string().min(1, "Secret answer is required"),
-  otpCode: z.string().length(6, "OTP must be 6 digits"),
-}).refine(data => !data.confirmPassword || data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-// OTP verification schema
-export const otpVerificationSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  otpCode: z.string().length(6, "OTP must be 6 digits"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -145,6 +158,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
   secretQuestion: true,
   secretAnswer: true,
+  verificationToken: true,
+  verificationTokenExpiry: true,
   otpCode: true,
   otpExpiry: true,
 });
@@ -153,6 +168,13 @@ export const insertPortfolioSchema = createInsertSchema(portfolios).omit({
   id: true,
   createdAt: true,
   updatedAt: true
+});
+
+export const insertTemplatePurchaseSchema = createInsertSchema(templatePurchases).omit({
+  id: true,
+  requestedAt: true,
+  approvedAt: true,
+  approvedBy: true
 });
 
 export const insertTemplateSchema = createInsertSchema(templates).omit({
@@ -167,9 +189,12 @@ export type InsertPortfolio = z.infer<typeof insertPortfolioSchema>;
 export type Portfolio = typeof portfolios.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
 export type Template = typeof templates.$inferSelect;
+export type InsertTemplatePurchase = z.infer<typeof insertTemplatePurchaseSchema>;
+export type TemplatePurchase = typeof templatePurchases.$inferSelect;
 
 export type PersonalInfo = z.infer<typeof personalInfoSchema>;
 export type Skill = z.infer<typeof skillSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Education = z.infer<typeof educationSchema>;
+export type Experience = z.infer<typeof experienceSchema>;
 export type ColorScheme = z.infer<typeof colorSchemeSchema>;

@@ -1,10 +1,11 @@
 import {
   users, type User, type InsertUser,
   portfolios, type Portfolio, type InsertPortfolio,
-  templates, type Template, type InsertTemplate
+  templates, type Template, type InsertTemplate,
+  templatePurchases, type TemplatePurchase, type InsertTemplatePurchase
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, sql } from "drizzle-orm";
+import { eq, desc, asc, sql, and } from "drizzle-orm";
 import session from "express-session";
 // We will replace this later with connect-sqlite3
 import createMemoryStore from "memorystore";
@@ -19,7 +20,6 @@ export interface IStorage {
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   getUserByResetToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  createTempUser(email: string, otpCode: string, otpExpiry: number): Promise<User>;
   updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>; // Added for admin functionality
 
@@ -40,6 +40,14 @@ export interface IStorage {
   updateTemplate(id: number, templateData: Partial<InsertTemplate>): Promise<Template | undefined>; // Added for admin functionality
   deleteTemplate(id: number): Promise<boolean>; // Added for admin functionality
   incrementTemplatePopularity(id: number): Promise<Template | undefined>;
+
+  // Template purchase operations
+  createTemplatePurchase(purchase: InsertTemplatePurchase): Promise<TemplatePurchase>;
+  getTemplatePurchase(id: number): Promise<TemplatePurchase | undefined>;
+  getTemplatePurchasesByUserId(userId: number): Promise<TemplatePurchase[]>;
+  getTemplatePurchasesByStatus(status: string): Promise<TemplatePurchase[]>;
+  updateTemplatePurchase(id: number, data: Partial<InsertTemplatePurchase>): Promise<TemplatePurchase | undefined>;
+  hasUserPurchasedTemplate(userId: number, templateId: number): Promise<boolean>;
 
   // Session store
   sessionStore: any; // Using any for SessionStore type to avoid TypeScript errors
@@ -82,19 +90,6 @@ export class SqliteStorage implements IStorage {
     return result;
   }
 
-  async createTempUser(email: string, otpCode: string, otpExpiry: number): Promise<User> {
-    // Create a temporary user with just email and OTP
-    const result = await db.insert(users).values({
-      username: `temp_${Date.now()}`, // Temporary username
-      email,
-      password: 'temp', // Will be replaced during registration
-      role: 'user',
-      otpCode,
-      otpExpiry
-    }).returning().get();
-    return result;
-  }
-
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
     const result = await db.update(users)
       .set(userData)
@@ -114,13 +109,49 @@ export class SqliteStorage implements IStorage {
   }
 
   async getPortfoliosByUserId(userId: number): Promise<Portfolio[]> {
-    return db.select().from(portfolios).where(eq(portfolios.userId, userId)).all();
+    try {
+      // Use a simpler query to avoid schema issues
+      const result = db.select({
+        id: portfolios.id,
+        userId: portfolios.userId,
+        name: portfolios.name,
+        templateId: portfolios.templateId,
+        personalInfo: portfolios.personalInfo,
+        skills: portfolios.skills,
+        projects: portfolios.projects,
+        education: portfolios.education,
+        experience: portfolios.experience,
+        colorScheme: portfolios.colorScheme,
+        createdAt: portfolios.createdAt,
+        updatedAt: portfolios.updatedAt,
+        isPublished: portfolios.isPublished
+        // Omit the problematic fields
+      })
+      .from(portfolios)
+      .where(eq(portfolios.userId, userId))
+      .all();
+
+      return result as unknown as Portfolio[];
+    } catch (error) {
+      console.error('Error in getPortfoliosByUserId:', error);
+      return [];
+    }
   }
 
   async createPortfolio(insertPortfolio: InsertPortfolio): Promise<Portfolio> {
-    // Drizzle handles createdAt/updatedAt defaults via SQL
-    const result = await db.insert(portfolios).values(insertPortfolio).returning().get();
-    return result;
+    try {
+      // Drizzle handles createdAt/updatedAt defaults via SQL
+      // Ensure we're not passing fields that don't exist in the database
+      const { isPremiumTemplate, isPurchased, ...safeData } = insertPortfolio as any;
+
+      console.log('Creating portfolio with data:', safeData);
+
+      const result = db.insert(portfolios).values(safeData).returning().get();
+      return result;
+    } catch (error) {
+      console.error('Error creating portfolio:', error);
+      throw error;
+    }
   }
 
   async updatePortfolio(id: number, updates: Partial<InsertPortfolio>): Promise<Portfolio | undefined> {
@@ -187,6 +218,47 @@ export class SqliteStorage implements IStorage {
       .returning()
       .get();
     return result;
+  }
+
+  // Template purchase methods
+  async createTemplatePurchase(purchase: InsertTemplatePurchase): Promise<TemplatePurchase> {
+    const result = await db.insert(templatePurchases).values(purchase).returning().get();
+    return result;
+  }
+
+  async getTemplatePurchase(id: number): Promise<TemplatePurchase | undefined> {
+    return db.select().from(templatePurchases).where(eq(templatePurchases.id, id)).get();
+  }
+
+  async getTemplatePurchasesByUserId(userId: number): Promise<TemplatePurchase[]> {
+    return db.select().from(templatePurchases).where(eq(templatePurchases.userId, userId)).all();
+  }
+
+  async getTemplatePurchasesByStatus(status: string): Promise<TemplatePurchase[]> {
+    return db.select().from(templatePurchases).where(eq(templatePurchases.status, status)).all();
+  }
+
+  async updateTemplatePurchase(id: number, data: Partial<InsertTemplatePurchase>): Promise<TemplatePurchase | undefined> {
+    const result = await db.update(templatePurchases)
+      .set(data)
+      .where(eq(templatePurchases.id, id))
+      .returning()
+      .get();
+    return result;
+  }
+
+  async hasUserPurchasedTemplate(userId: number, templateId: number): Promise<boolean> {
+    const purchase = await db.select()
+      .from(templatePurchases)
+      .where(
+        and(
+          eq(templatePurchases.userId, userId),
+          eq(templatePurchases.templateId, templateId),
+          eq(templatePurchases.status, 'approved')
+        )
+      )
+      .get();
+    return !!purchase;
   }
 }
 

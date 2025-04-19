@@ -9,7 +9,9 @@ import Home from "./pages/Home";
 import Templates from "./pages/Templates";
 import AuthPage from "./pages/auth-page";
 import AdminDashboard from "./pages/admin/Dashboard";
+import TemplatePurchases from "./pages/admin/TemplatePurchases";
 import MyPortfolios from "./pages/MyPortfolios";
+import MyPurchases from "./pages/MyPurchases";
 import VerifyEmailPage from "./pages/verify-email";
 import ResetPasswordPage from "./pages/reset-password";
 import ForgotPasswordPage from "./pages/forgot-password";
@@ -38,9 +40,11 @@ function Router() {
         <ProtectedRoute path="/create" component={CreateWrapper} />
         <ProtectedRoute path="/edit/:id" component={CreateWrapper} />
         <ProtectedRoute path="/my-portfolios" component={MyPortfolios} />
+        <ProtectedRoute path="/my-purchases" component={MyPurchases} />
         {/* Use regular Route for public preview */}
         <Route path="/preview/:id" component={PreviewWrapper} />
         <ProtectedRoute path="/admin" component={AdminDashboard} />
+        <ProtectedRoute path="/admin/template-purchases" component={TemplatePurchases} />
         <Route component={NotFound} />
       </Switch>
       {/* Conditionally render Footer */}

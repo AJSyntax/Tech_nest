@@ -1,23 +1,22 @@
 import { Link } from "wouter";
 import { Template } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Eye, Clock, Users } from "lucide-react";
-import { useState } from "react";
+import { Eye, Clock, Users, ShoppingCart, Play } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 
 interface TemplateCardProps {
   template: Template;
-  onPreview: (template: Template) => void; // Add onPreview prop
+  onPreview: (template: Template) => void;
+  onCheckout?: (template: Template) => void;
 }
 
-const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPreview }) => {
-  const [isHovering, setIsHovering] = useState(false);
+const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPreview, onCheckout }) => {
 
   return (
-    <div 
+    <div
       className="group relative rounded-lg overflow-hidden shadow-md border border-slate-200 hover:shadow-lg transition"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+
     >
       <div className="aspect-w-16 aspect-h-9 bg-slate-100">
         <img
@@ -26,8 +25,8 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPreview }) => {
           className="w-full h-60 object-cover"
         />
         <div className="absolute inset-0 bg-primary-600 bg-opacity-0 group-hover:bg-opacity-10 transition-opacity flex items-center justify-center">
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             className="opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
             size="sm"
             onClick={() => onPreview(template)} // Add onClick handler
@@ -62,10 +61,28 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template, onPreview }) => {
             {template.popularity} users
           </span>
         </div>
-        <div className="mt-4">
-          <Link href={`/create?template=${template.id}`}>
-            <Button className="w-full">Use Template</Button>
-          </Link>
+        <div className="mt-4 space-y-2">
+          {template.isPremium ? (
+            <>
+              <Link href={`/create?template=${template.id}&trial=true`}>
+                <Button className="w-full" variant="outline">
+                  <Play className="mr-2 h-4 w-4" />
+                  Try Template
+                </Button>
+              </Link>
+              <Button
+                className="w-full"
+                onClick={() => onCheckout && onCheckout(template)}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Checkout
+              </Button>
+            </>
+          ) : (
+            <Link href={`/create?template=${template.id}`}>
+              <Button className="w-full">Use Template</Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>
