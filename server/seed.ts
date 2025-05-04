@@ -161,7 +161,7 @@ async function seedDatabase() {
   const premiumTemplateData = {
     name: 'Professional',
     description: 'A premium template with advanced features and modern design. Requires purchase.',
-    thumbnailUrl: '/thumbnails/professional.png', // Placeholder path
+    thumbnailUrl: '/https://res.cloudinary.com/dmygblav6/image/upload/v1746379831/07002e0c-86ef-4722-995d-ffac6264fdcb.png', // Placeholder path
     isPremium: true,
     price: 1999, // $19.99
     category: 'Professional',

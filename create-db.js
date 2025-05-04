@@ -127,7 +127,7 @@ db.exec(`
   ) VALUES (
     'Professional',
     'A premium template with advanced features and modern design. Requires purchase.',
-    '/thumbnails/professional.png',
+    '/https://res.cloudinary.com/dmygblav6/image/upload/v1746380703/adf9b97f-8a33-4476-b939-5020d1e5c7e7.png',
     1,
     1999,
     'Professional',

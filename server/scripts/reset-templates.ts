@@ -1,12 +1,23 @@
 import { db } from '../db';
-import { templates } from '@shared/schema';
+import { templates, templatePurchases } from '@shared/schema';
 import { storage } from '../storage';
 
 async function resetTemplates() {
   console.log('Resetting templates...');
 
   try {
-    // Delete all existing templates
+    // First, delete all template purchases to avoid foreign key constraints
+    console.log('Deleting template purchases...');
+    try {
+      await db.delete(templatePurchases).run();
+      console.log('All template purchases deleted.');
+    } catch (error) {
+      console.error('Error deleting template purchases:', error);
+      // Continue with the process even if this fails
+    }
+
+    // Now delete all existing templates
+    console.log('Deleting templates...');
     await db.delete(templates).run();
     console.log('All templates deleted.');
 
@@ -140,7 +151,7 @@ footer {
     const freeTemplateData = {
       name: 'Minimalist',
       description: 'A clean and simple template focusing on content. Free for all users.',
-      thumbnailUrl: '/thumbnails/minimalist.png',
+      thumbnailUrl: 'https://res.cloudinary.com/dmygblav6/image/upload/v1746380703/adf9b97f-8a33-4476-b939-5020d1e5c7e7.png',
       isPremium: false,
       price: 0,
       category: 'General',
@@ -154,7 +165,7 @@ footer {
     const premiumTemplateData = {
       name: 'Professional',
       description: 'A premium template with advanced features and modern design. Requires purchase.',
-      thumbnailUrl: '/thumbnails/professional.png',
+      thumbnailUrl: 'https://res.cloudinary.com/dmygblav6/image/upload/v1746379831/07002e0c-86ef-4722-995d-ffac6264fdcb.png',
       isPremium: true,
       price: 1999, // $19.99
       category: 'Professional',

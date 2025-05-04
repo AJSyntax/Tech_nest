@@ -91,7 +91,11 @@ export async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-async function comparePasswords(supplied: string, stored: string) {
+async function comparePasswords(supplied: string, stored: string | null) {
+  if (!stored) {
+    console.log("No stored password to compare");
+    return false;
+  }
   try {
     // Format: <hashed>.<salt>
     const [hashed, salt] = stored.split(".");
@@ -130,7 +134,7 @@ export function validatePasswordComplexity(password: string): { isValid: boolean
 }
 
 export function setupAuth(app: Express) {
-  // Session middleware
+  // Session middleware with enhanced debugging
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "technest-session-secret",
     resave: true,
@@ -143,8 +147,14 @@ export function setupAuth(app: Express) {
       sameSite: 'lax',
       path: '/' // Ensure cookie is sent for all paths
     },
-    name: 'technest.sid' // Custom name to avoid conflicts
+    name: 'technest.sid', // Custom name to avoid conflicts
+    rolling: true // Force a cookie to be set on every response
   };
+
+  // Add event listeners to the session store for debugging
+  (sessionStore as any).on('error', (error: any) => {
+    console.error('Session store error:', error);
+  });
 
   // Log session store setup
   console.log('Session store initialized');
@@ -171,14 +181,24 @@ export function setupAuth(app: Express) {
 
   // Serialize and deserialize user
   passport.serializeUser((user, done) => {
+    console.log(`Serializing user: ${user.username} (ID: ${user.id})`);
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
     try {
+      console.log(`Deserializing user with ID: ${id}`);
       const user = await storage.getUser(id);
+
+      if (!user) {
+        console.error(`User with ID ${id} not found during deserialization`);
+        return done(null, false);
+      }
+
+      console.log(`User deserialized successfully: ${user.username}`);
       done(null, user);
     } catch (error) {
+      console.error('Error deserializing user:', error);
       done(error);
     }
   });

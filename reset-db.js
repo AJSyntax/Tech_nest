@@ -198,7 +198,7 @@ footer {
   `).run(
     'Professional',
     'A premium template with advanced features and modern design. Requires purchase.',
-    '/thumbnails/professional.png',
+    '/https://res.cloudinary.com/dmygblav6/image/upload/v1746379831/07002e0c-86ef-4722-995d-ffac6264fdcb.png',
     1, // premium
     1999, // $19.99
     'Professional',

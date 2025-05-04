@@ -6,10 +6,22 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Add more detailed logging for debugging
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  // Log all requests
+  console.log(`REQUEST: ${req.method} ${path} - Session ID: ${req.sessionID || 'none'} - Auth: ${req.isAuthenticated ? req.isAuthenticated() : 'n/a'}`);
+
+  if (req.session) {
+    console.log(`Session data:`, req.session);
+  }
+
+  if (req.user) {
+    console.log(`User data:`, { id: req.user.id, username: (req.user as any).username });
+  }
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {

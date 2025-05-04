@@ -40,7 +40,7 @@ const Home = () => {
               <div className="relative mx-auto w-full rounded-lg shadow-lg lg:max-w-md">
                 <img 
                   className="w-full rounded-lg" 
-                  src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2072&q=80" 
+                  src="https://res.cloudinary.com/dmygblav6/image/upload/v1746380703/adf9b97f-8a33-4476-b939-5020d1e5c7e7.png" 
                   alt="Developer coding on a laptop" 
                 />
                 <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/20 to-purple-500/20 rounded-lg"></div>
